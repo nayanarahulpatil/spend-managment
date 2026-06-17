@@ -1,0 +1,57 @@
+# Implementation Plan - Expense Management Module Enhancements
+
+Develop the backend and frontend features for the Expense Management Module to satisfy all specifications and KPIs of Module 3 in [KPI_enterprise_expense_management.md](file:///d:/vibe%20code/spend-managment/agents/KPI_enterprise_expense_management.md) (labeled as Module 2 in the user request).
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Idempotency Headers (`EXP-09`)**: We will support the standard `Idempotency-Key` header on the expense submission API. If a client retries a submission with an existing key, the backend returns the original created record without creating a duplicate.
+> - **Receipt-Less Limit (`EXP-07`)**: Expenses up to $25 are allowed without receipts. Any expense above $25 without a receipt will reject with a `422 Unprocessable Entity` status.
+> - **Cost Center Specific Policies (`EXP-03`)**: Implement the Marketing breakfast/coffee limit ($15.00) in the backend policy engine for category `meals` and cost center `CC-102`/`MKT-400`.
+> - **Pagination (`EXP-10`)**: Implement proper page slicing in `GET /api/v1/expenses` supporting `page` and `limit` parameters.
+
+---
+
+## Proposed Changes
+
+### Backend Expenses Module
+
+#### [MODIFY] [expense.schema.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/expenses/schemas/expense.schema.ts)
+- Add `idempotencyKey` field as an optional indexed string to check for retries.
+
+#### [MODIFY] [create-expense.dto.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/expenses/dto/create-expense.dto.ts)
+- Make `receipt_url` optional in validator decorators (change `@IsNotEmpty()` to `@IsOptional()`).
+
+#### [MODIFY] [expenses.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/expenses/expenses.service.ts)
+- Update `create()`:
+  - Check for existing record matching the `idempotencyKey`. If found, return it directly.
+  - Implement `$25` receipt-less limit check: If `convertedAmount` (in USD) > 25 and no receipt URL is provided, throw `UnprocessableEntityException` (422).
+  - Implement duplicate receipt validation only if a receipt URL is present (avoid hashing empty inputs).
+- Update `runPolicyCheck()` to accept `costCenterId` and enforce the Marketing (`CC-102` or `MKT-400`) meal limit ($15.00).
+
+#### [MODIFY] [expenses.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/expenses/expenses.controller.ts)
+- In `create()`, extract the `idempotency-key` or `x-idempotency-key` header and pass it to the service.
+- In `findAll()`, support query parameters `page` and `limit`, perform slicing, and return correct paginated metadata.
+
+---
+
+### Frontend Components
+
+#### [MODIFY] [api.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/services/api.ts)
+- Update `submitExpense` mutation to accept `{ expense, idempotencyKey }` and inject the `Idempotency-Key` header.
+
+#### [MODIFY] [SubmitExpenseTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/expenses/SubmitExpenseTab.tsx)
+- Keep track of an `idempotencyKey` in the component state (generated on load/reset).
+- Pass this key along with the form payload during submission.
+
+---
+
+## Verification Plan
+
+### Automated Verification
+- We will verify that files compile correctly (run manual build check if terminal remains blocked).
+
+### Manual Verification
+- Test submitting an expense above $25 without a receipt (confirm it returns `422`).
+- Test submitting an expense under $25 without a receipt (confirm it succeeds).
+- Verify idempotency by submitting the same key twice and checking that no duplicate record is created.

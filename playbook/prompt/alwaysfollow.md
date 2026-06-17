@@ -1,0 +1,1 @@
+Follow this [.antigravityrules], [project_boundry.md] always for all of the next process.

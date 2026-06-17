@@ -1,0 +1,124 @@
+# Implementation Plan - Enterprise Spend Management Platform
+
+Create the React frontend in `project/frontend` and NestJS backend in `project/backend` according to the provided product scope, design system, and personas.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Commands Execution**: Running `npm install` and initializing scripts require terminal commands. These will require user approval before execution in the terminal.
+> - **Docker Setup**: The docker-compose configuration will spin up MongoDB and Redis. This requires Docker and Docker Compose installed and running on the host machine.
+> - **AI Integration Keys**: The OpenAI and Firebase integration will require placeholders in the `.env` file. These must be replaced with valid keys by the user for real API functionality.
+
+## Open Questions
+
+- None at the moment. We have full specs for features F-01 through F-22 in the `features/` directory and design tokens from the Stitch project.
+
+---
+
+## Proposed Changes
+
+### Backend - NestJS Setup (`project/backend`)
+
+We will initialize a clean, production-ready NestJS application in `project/backend` containing standard dependencies, core configurations, and database connections.
+
+#### [NEW] [package.json](file:///d:/vibe%20code/spend-managment/project/backend/package.json)
+Contains core NestJS dependencies (`@nestjs/common`, `@nestjs/core`, `@nestjs/mongoose`, `@nestjs/jwt`, `@nestjs/config`, `@nestjs/passport`, `@nestjs/swagger`), database (`mongoose`), cache (`ioredis`), AI (`openai`), validation (`class-validator`, `class-transformer`), security (`helmet`, `bcrypt`, `passport-jwt`), and utility libraries.
+
+#### [NEW] [tsconfig.json](file:///d:/vibe%20code/spend-managment/project/backend/tsconfig.json)
+TypeScript configuration for NestJS compilation.
+
+#### [NEW] [nest-cli.json](file:///d:/vibe%20code/spend-managment/project/backend/nest-cli.json)
+NestJS CLI configuration.
+
+#### [NEW] [Dockerfile](file:///d:/vibe%20code/spend-managment/project/backend/Dockerfile)
+Dockerfile for building the backend service image.
+
+#### [NEW] [docker-compose.yml](file:///d:/vibe%20code/spend-managment/project/backend/docker-compose.yml)
+Multi-container orchestration setup including:
+- Backend app
+- MongoDB
+- Redis
+
+#### [NEW] [.env.example](file:///d:/vibe%20code/spend-managment/project/backend/.env.example)
+Example environment variables template.
+
+#### [NEW] [src/main.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/main.ts)
+Entrypoint setting up CORS, Helmet, global validation pipes, Swagger UI at `/api`, and starting the server.
+
+#### [NEW] [src/app.module.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/app.module.ts)
+Main module importing MongoDB, Redis, config, and all business modules.
+
+#### [NEW] [src/database/mongodb.module.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/database/mongodb.module.ts)
+Mongoose connection configuration using environment variables.
+
+#### [NEW] [src/config/configuration.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/config/configuration.ts)
+Configuration loader and validation schema.
+
+#### [NEW] [src/common/decorators/current-user.decorator.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/common/decorators/current-user.decorator.ts)
+Decorator to retrieve current user from Request context.
+
+#### [NEW] [src/common/decorators/roles.decorator.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/common/decorators/roles.decorator.ts)
+Decorator to specify roles allowed to access an endpoint.
+
+#### [NEW] [src/common/guards/jwt-auth.guard.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/common/guards/jwt-auth.guard.ts)
+Passport JWT Auth Guard.
+
+#### [NEW] [src/common/guards/roles.guard.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/common/guards/roles.guard.ts)
+Guard that matches user role with roles allowed on endpoint.
+
+---
+
+### Frontend - React & Vite Setup (`project/frontend`)
+
+We will initialize a modern React 19 application in `project/frontend` using Vite, configured with Tailwind CSS, Redux Toolkit, RTK Query, and Formik.
+
+#### [NEW] [package.json](file:///d:/vibe%20code/spend-managment/project/frontend/package.json)
+Vite and React 19 dependencies, Redux Toolkit, Formik, Yup, Tailwind CSS, Lucide React, and build tools.
+
+#### [NEW] [vite.config.ts](file:///d:/vibe%20code/spend-managment/project/frontend/vite.config.ts)
+Vite configuration with asset routing and dev server options.
+
+#### [NEW] [tsconfig.json](file:///d:/vibe%20code/spend-managment/project/frontend/tsconfig.json)
+TypeScript root configuration.
+
+#### [NEW] [tailwind.config.js](file:///d:/vibe%20code/spend-managment/project/frontend/tailwind.config.js)
+Tailwind configuration setting up the custom corporate dark mode palette and fonts derived from the Stitch design system.
+
+#### [NEW] [postcss.config.js](file:///d:/vibe%20code/spend-managment/project/frontend/postcss.config.js)
+PostCSS configuration for Tailwind compiler.
+
+#### [NEW] [index.html](file:///d:/vibe%20code/spend-managment/project/frontend/index.html)
+Root HTML template linking Google Fonts (Inter, JetBrains Mono) and entry script.
+
+#### [NEW] [src/index.css](file:///d:/vibe%20code/spend-managment/project/frontend/src/index.css)
+Tailwind imports and core utility classes for glassmorphic cards and background blurs.
+
+#### [NEW] [src/main.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/main.tsx)
+Vite entrypoint rendering the React application within the Redux Store provider.
+
+#### [NEW] [src/store/index.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/store/index.ts)
+Redux Store setup with RTK Query API middle-wares and custom state slices (e.g. auth).
+
+#### [NEW] [src/services/api.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/services/api.ts)
+RTK Query base API service setup with automatic JWT header attachment and response handling.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run NestJS backend test command:
+  ```bash
+  npm run test
+  ```
+- Run React frontend test command:
+  ```bash
+  npm run test
+  ```
+
+### Manual Verification
+1. Run `docker-compose up -d` to launch MongoDB and Redis databases.
+2. Launch the backend using `npm run start:dev` inside `project/backend`.
+3. Verify that Swagger UI is accessible at `http://localhost:3000/api`.
+4. Launch the frontend using `npm run dev` inside `project/frontend`.
+5. Verify the login page renders correctly in the browser with dark theme, glassmorphic styling, and inputs.

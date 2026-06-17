@@ -1,0 +1,37 @@
+# Implementation Plan - Integrate High-Fidelity User Management Screens
+
+This plan details the integration of the User Management and Create User screens into the `UsersTab.tsx` component.
+
+## User Review Required
+
+> [!NOTE]
+> - **Unified Component Navigation**: We will manage the transition between the **Employee Directory** table (Screen 1) and the **Create New User** form (Screen 2) via a simple React state boolean (`isCreating`). Clicking the "Create New User" button in the directory view will display the form, and clicking "Cancel" or successfully submitting the form will return the user to the directory view.
+> - **API Integration**: Form submission will call the existing `useCreateUserMutation` endpoint, and the directory view will populate using the `useGetUsersQuery` hook, with fallback mock data for high-fidelity representation of corporate profiles.
+
+## Proposed Changes
+
+### Users Feature Component
+
+#### [MODIFY] [UsersTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/users/UsersTab.tsx)
+We will rewrite `UsersTab.tsx` to handle two modes based on `isCreating` state:
+1. **Employee Directory (Directory Mode)**:
+   - Bento-style summary stats row (Total Users, Active Now, Pending Audit, Flagged Actions).
+   - Search bar and filtering badges matching Screen 1.
+   - User table displaying Employee (profile avatar + name + email), System Role badge, Department, Last Activity, and Status (Active, Policy Violation, Deactivated) with hover action buttons.
+   - AI Audit recommendation panel at the bottom ("3 inactive Engineering users recommendation").
+2. **Create New User (Form Mode)**:
+   - Full glass-panel input canvas matching Screen 2.
+   - Fields: Full Name, Work Email, Employee ID, Cost Center, Manager Assignment, Department, and System Role.
+   - Toggle buttons for Access Controls (MFA Required, API Access).
+   - Warning banner for Compliance department verification.
+   - Success toast triggers upon validation and submission.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Log in with admin credentials (`admin@company.com`) and navigate to the User Management tab.
+2. Verify the Employee Directory lists active corporate users, displays the bento cards, and shows the AI Audit panel at the bottom.
+3. Click "Create New User" to enter the Form Mode. Verify that all input fields, access controls, and note cards match the Screen 2 specifications.
+4. Input details, click "Create User", and confirm the Success Toast shows up before returning to the Employee Directory view.

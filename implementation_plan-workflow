@@ -1,0 +1,67 @@
+# Goal: Implement Module 4 Workflow Configuration
+
+Implement a persistent, configurable, and high-fidelity Workflow Configuration feature matching the Stitch design (Screen ID `b59da977436d4d05a48d53bc4db6ddfd`). This enables administrators to define multi-level approval chains with distinct SLA rules, conditions, and automated escalation parameters, satisfying Sprints 5 & 6 requirements of the Workflow Management Module.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Tab Switcher on Approvals Page**: For Admin users, we will render a tab selector at the top of the **Team Approvals** page allowing toggling between the **Approvals Queue** and the **Workflow Configuration** screen.
+> - **Seed Rules**: We will seed a default "Standard Approval Workflow" with three predefined levels (Direct Manager up to $5,000, Finance/Dept Head for Travel/Hardware or values > $5,000, and Executive Approval for values > $50,000) on backend start.
+> - **Multi-Level Approval Logic**: The backend approval service will be upgraded to check for matching workflow rules, progressing expenses level-by-level rather than immediately marking them as fully approved.
+
+## Proposed Changes
+
+### Backend Components
+
+---
+
+#### [NEW] [workflow-rule.schema.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/workflow/schemas/workflow-rule.schema.ts)
+- Create schema for `WorkflowRule` storing:
+  - `name`: String
+  - `isActive`: Boolean
+  - `levels`: Array of workflow levels, each with `level` (Number), `name` (String), `description` (String), `limit` (Number), `slaHours` (Number), `autoEscalate` (Boolean), and `condition` (String).
+
+#### [MODIFY] [workflow.module.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/workflow/workflow.module.ts)
+- Import `MongooseModule.forFeature` with the new `WorkflowRule` schema.
+
+#### [MODIFY] [workflow.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/workflow/workflow.service.ts)
+- Implement `OnModuleInit` to seed the default "Standard Approval Workflow" configuration.
+- Implement `getRules()`, `updateRules()`, and `applyAiRecommendations()` services.
+- Refactor `approve()` to dynamically evaluate which workflow level is currently active for the expense, increment its active level or route it to the next level based on limits/conditions, and only mark status as `approved` once all matching levels have been successfully cleared.
+
+#### [MODIFY] [workflow.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/workflow/workflow.controller.ts)
+- Add endpoints:
+  - `GET /api/v1/workflows/rules` (Roles: admin, finance)
+  - `POST /api/v1/workflows/rules` (Roles: admin)
+  - `POST /api/v1/workflows/rules/apply-ai` (Roles: admin)
+
+---
+
+### Frontend Components
+
+---
+
+#### [MODIFY] [api.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/services/api.ts)
+- Add RTK Query endpoints:
+  - `getWorkflowRules`
+  - `updateWorkflowRules`
+  - `applyAiWorkflowRules`
+- Export corresponding hooks.
+
+#### [MODIFY] [WorkflowTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/workflow/WorkflowTab.tsx)
+- Add a tab header at the top (`Pending Queue` / `Workflow Configuration`) visible to admins and finance users.
+- Build the **Workflow Configuration** canvas including:
+  - **Rules Grid**: Displaying the active standard approval rules, configured levels (Level 1, 2, 3), SLA metrics, avatars, and rule parameters.
+  - **Sidebar Cards**: Workflow Health statistics (completion speed progress bar, escalation rate), AI Policy Auditor suggestions panel (with functional "Apply All Recommendations" button), and Revision History log list.
+  - Interactivity to toggle AI-Assisted Policy, edit levels via dialog, add new rules, and persist configurations back to the API.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+- Log in as an **Admin** user.
+- Click **Team Approvals** in the sidebar. Verify the tab bar with `Approvals Queue` and `Workflow Configuration` is visible.
+- Toggle to **Workflow Configuration**. Confirm all 3 workflow levels match the high-fidelity design from Stitch.
+- Click **Apply All Recommendations** on the AI Policy Auditor card; verify it updates the standard rules payload and saves successfully.
+- Submit an expense with an amount > $50,000. Approve it at Level 1; verify its status is not immediately fully approved but progresses to the next active level (Level 2 & Level 3).

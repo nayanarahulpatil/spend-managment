@@ -1,0 +1,1 @@
+Before coding identify: Files To Create, Files To Update ,Database Migrations,API Modifications, Tests To Update

@@ -1,0 +1,107 @@
+# Implementation Plan - Restructure Frontend & Integrate High-Fidelity Stitch Screens
+
+This plan details the modularization of the React frontend in `project/frontend/src` and the integration of the four high-fidelity screens from the Stitch enterprise design workspace.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Iconography**: The downloaded Stitch screens utilize Google's Material Symbol font icons. We will map these to standard Lucide React SVG-based icons (`lucide-react`) to match the rest of the application's React styling ecosystem and ensure fast, offline-compatible rendering.
+> - **Simulated Prototypes**: The downloaded screens contain visual loading animations (e.g., table skeleton, scanner line, chart bar transitions). We will implement these animations using Tailwind CSS utility classes and local component state.
+
+## Proposed Changes
+
+We will extract the monolithic tabs inside [App.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/App.tsx) and place them in their respective feature folders under `src/features/` and `src/components/`.
+
+---
+
+### Global Styling Updates
+
+#### [MODIFY] [index.css](file:///d:/vibe%20code/spend-managment/project/frontend/src/index.css)
+Add custom CSS animation keyframes and classes:
+- `@keyframes scan` and `.ocr-scanline` for Submit Expense scanner animation.
+- `@keyframes shimmer` and `.shimmer` for dashboard skeleton loaders.
+- `@keyframes pulse-glow` and `.ai-glow` for AI assistant elements.
+- Chart transitions for the department spend graph.
+
+---
+
+### Core Layout Components
+
+#### [NEW] [Sidebar.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/components/Sidebar.tsx)
+The global aside sidebar navigation. Integrates the branding header ("Equinox Finance Manager"), active routes styling matching screen designs, user context card (Alex Rivera / Julian Vane), and logout actions.
+
+#### [NEW] [Header.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/components/Header.tsx)
+The top navigation bar showing the active screen title, search input box, AI assistant toggle badge, notification alerts, and active user profile dropdown.
+
+---
+
+### Modular Feature Views
+
+#### [NEW] [LoginView.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/auth/LoginView.tsx)
+Split-pane login screen:
+- Left pane: Branding and abstract geometric glow card ("AI Compliant" badge).
+- Right pane: Standard login fields, Google SSO continuation, error displays.
+
+#### [NEW] [DashboardTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/dashboard/DashboardTab.tsx)
+Implements the high-fidelity My Dashboard view:
+- Metrics cards (Pending Reimbursement, Approved This Month, Active Policy Flags) with relative hover states.
+- AI Insights Bento Card (with policy redirect and decorative premium graphic illustration).
+- Recent Submissions table containing a simulated loading delay skeleton that transition-reveals live RTK Query data.
+- Floating Add Expense FAB.
+
+#### [NEW] [SubmitExpenseTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/expenses/SubmitExpenseTab.tsx)
+Implements the Submit New Expense view:
+- Receipt Scanner container supporting drag-and-drop file upload with a scrolling blue scanline and auto-ocr status indicators.
+- Live OCR data preview cards (Starbucks, $15.40, June 15, 2026).
+- Form inputs for Amount, Currency, Category, Cost Center, Description, and Justification.
+- Real-time policy warning banners (displays $15.00 breakfast limit violations with hovering tooltip details).
+- Multi-column metadata cards (Project Code, Payment Method, Tax ID).
+
+#### [NEW] [WorkflowTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/workflow/WorkflowTab.tsx)
+Implements the Approval Queue manager view:
+- Stats row (Pending Approvals counter, SLA Breach timers).
+- Filter toggles (Urgent, Violations, Over SLA).
+- Bulk actions bar (Approve Selected, Reject Selected).
+- Approval queue list table displaying employee profile, description, amount, status tags, and action buttons.
+- Sliding Detail Drawer (reveals details upon row selection: trust scores, receipt image preview, AI anomaly detection report with JFK-LHR cost deviation warnings, policy breach flags, and action comments).
+
+#### [NEW] [ReportingTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/reporting/ReportingTab.tsx)
+Implements the Org Analytics & Reports view:
+- Spend by Department bar chart visual showing budgets, forecasts, and variance statistics.
+- Circular progress wheel demonstrating the 94% policy compliance rate alongside top violation instances list.
+- Category breakdown pie-chart visual with color indicators.
+- Live Audit Logs preview tracking event timestamps.
+- Export package buttons (CSV, PDF, ZIP) and predictive analytics engine launcher.
+
+#### [NEW] [UsersTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/users/UsersTab.tsx)
+Profiles management grid and role-creation form.
+
+#### [NEW] [AiTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/ai/AiTab.tsx)
+Policy chatbot and anomalous transactions catalog.
+
+#### [NEW] [NotificationsTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/notifications/NotificationsTab.tsx)
+System alert list and mark-as-read toggles.
+
+---
+
+### Main Application Coordinator
+
+#### [MODIFY] [App.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/App.tsx)
+Restructure App to import and route to modular component folders depending on the active tab and authenticated user roles.
+
+---
+
+## Verification Plan
+
+### Automated Build Verification
+We will run Vite's TypeScript and compiler checks to ensure no compilation issues:
+- Verify TS/Lint and bundles:
+  ```bash
+  npm run build
+  ```
+
+### Manual Visual Verification
+1. Log in with employee credentials (`employee@company.com`) and verify the Dashboard Tab's skeleton loader and bento card look.
+2. Navigate to Submit Expense, upload a receipt, and check the policy limit warning banner.
+3. Log in with manager credentials (`manager@company.com`), open Team Approvals, click an item to trigger the sliding details drawer, and review the AI anomaly details.
+4. Verify the Analytics tab charts and audit logs display cleanly.

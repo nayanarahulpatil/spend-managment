@@ -1,0 +1,3 @@
+#project_scope---
+Act according to the [manager_persona.md](file;file:///d%3A/vibe%20code/vibe-coading-3/personas/manager_persona.md)  Create a project_scope by referring [prd.md](file;file:///d%3A/vibe%20code/vibe-coading-3/agents/prd.md) and [kpi.md](file;file:///d%3A/vibe%20code/vibe-coading-3/agents/kpi.md) by following the format specified in [project_scope_template.md](file;file:///d%3A/vibe%20code/vibe-coading-3/template/project_scope_template.md) 
+Format: Strictly follow the format mentioned in respective file for which template is given and make sure to put project_scope in [agents](directory;file:///d%3A/vibe%20code/vibe-coading-3/agents)

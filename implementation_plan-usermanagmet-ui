@@ -1,0 +1,64 @@
+# Implementation Plan - User Management Module Backend Enhancements
+
+Develop the backend user management features to fully satisfy the specifications and KPIs of Module 2 (User Management Module) in [KPI_enterprise_expense_management.md](file:///d:/vibe%20code/spend-managment/agents/KPI_enterprise_expense_management.md).
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **PII Log Masking**: We will implement a global exception filter `PiiMaskingExceptionFilter` that intercepts all HTTP exceptions. It will scan error messages, payloads, and logs to mask email addresses and names, satisfying the security requirements of `USR-08` (0 PII exposed in non-authenticated error responses).
+> - **Soft-Delete Session Invalidation**: When an administrator deactivates a user (setting `isActive: false`), the backend will immediately contact Redis to delete all active session tokens (`refresh:userId:*`), forcing an immediate logout for `USR-07`.
+
+## Proposed Changes
+
+### Users Module
+
+#### [MODIFY] [user.schema.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/schemas/user.schema.ts)
+- Add `costCenter` to the schema as a string field with index support.
+
+#### [MODIFY] [create-user.dto.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/dto/create-user.dto.ts)
+- Add validation decorators for `costCenter` (optional, default `CC-101`).
+
+#### [NEW] [update-user.dto.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/dto/update-user.dto.ts)
+- Create a DTO for updating users with fields: `name`, `email`, `role`, `department`, `costCenter`, `managerId`, and `isActive`.
+- Apply validation rules matching `CreateUserDto`.
+
+#### [MODIFY] [users.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/users.service.ts)
+- Inject `RedisService` to interact with cached sessions.
+- In `create()` and `update()`, check the relationship between `department` and `costCenter`. Define a map of valid department cost-centers:
+  ```typescript
+  const DEPARTMENT_COST_CENTER_MAP = {
+    'Finance': ['CC-101', 'CC-99'],
+    'Engineering': ['CC-101', 'PD-102'],
+    'Sales': ['CC-103', 'GS-505'],
+    'Marketing': ['CC-102', 'MKT-400'],
+    'Compliance': ['CC-101'],
+    'HR': ['CC-101'],
+    'Executive Operations': ['CC-99']
+  };
+  ```
+  Throw `UnprocessableEntityException` (422 status) if the cost center is not linked to the specified department (`USR-06`).
+- In `update()`, if `isActive` is set to `false`, run `redisService.delPattern('refresh:userId:*')` to immediately revoke all refresh tokens.
+
+#### [MODIFY] [users.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/users.controller.ts)
+- Update `update()` route handler to consume `UpdateUserDto` and apply class validation.
+
+---
+
+### Security & Global Utilities
+
+#### [NEW] [pii-masking-exception.filter.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/common/filters/pii-masking-exception.filter.ts)
+- Global exception filter that catches `HttpException` and masks PII fields (emails, names) from error logs and response details.
+- Standardizes unauthorized responses for deactivated users without exposing details.
+
+#### [MODIFY] [main.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/main.ts)
+- Bind `PiiMaskingExceptionFilter` globally.
+
+---
+
+## Verification Plan
+
+### Automated Verification
+We will verify that tests compile and complete. (We will let the user run verification locally if terminal execution remains blocked by policies).
+```bash
+npm run test
+```
