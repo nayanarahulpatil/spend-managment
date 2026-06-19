@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useGetUsersQuery, useCreateUserMutation } from '../../services/api';
+import { useGetUsersQuery, useCreateUserMutation, useUpdateUserMutation } from '../../services/api';
 import { 
   UserPlus, 
   Loader, 
@@ -12,7 +12,6 @@ import {
   ShieldAlert, 
   Info, 
   CheckCircle,
-  X,
   Mail,
   UserCheck,
   SearchCode,
@@ -30,8 +29,11 @@ interface UsersTabProps {
 export default function UsersTab({ showToast }: UsersTabProps) {
   const { data: usersData, isLoading, refetch } = useGetUsersQuery(undefined);
   const [createUser, { isLoading: isCreatingUser }] = useCreateUserMutation();
+  const [updateUser, { isLoading: isUpdatingUser }] = useUpdateUserMutation();
 
   const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'managers' | 'finance'>('all');
   const [successToast, setSuccessToast] = useState(false);
@@ -39,6 +41,9 @@ export default function UsersTab({ showToast }: UsersTabProps) {
   const [deptFilter, setDeptFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sysRoleFilter, setSysRoleFilter] = useState('all');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -66,97 +71,39 @@ export default function UsersTab({ showToast }: UsersTabProps) {
     role: 'employee',
     mfaRequired: true,
     apiAccess: false,
+    isActive: true,
   });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-10 bg-slate-800 rounded w-1/3 mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="h-24 bg-slate-800 rounded-xl" />
-          <div className="h-24 bg-slate-800 rounded-xl" />
-          <div className="h-24 bg-slate-800 rounded-xl" />
-          <div className="h-24 bg-slate-800 rounded-xl" />
-        </div>
-        <div className="h-64 bg-slate-800 rounded-xl mt-6" />
-      </div>
-    );
-  }
 
   // Raw API users list
   const apiUsersList = usersData?.data || [];
+  const managerUsers = apiUsersList.filter((u: any) => u.role === 'manager' || u.role === 'admin' || u.role === 'finance');
 
-  // High fidelity mock profiles from screen 1eee258c1aed4437a59ad23658650279
-  const mockUsers = [
-    {
-      id: 'usr_alex_rivera',
-      name: 'Alex Rivera',
-      email: 'a.rivera@equinox.finance',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQttV_6ni1CzIVT-pYvsHm9gE81oqp5ep8LGrwgWxdYJY8im8nbw5q6eapqUv1P7OX46gLaPeNauCwqbsqzxpP8206l8n-W0qm6aH5zkBM2Ia3Djixkwjrx3PbWm1nlxr4GT2HaNyBe4aaf1LRqzmYrjZN7919xIbj-Cz3eRKp5EOJ_6D3ZqMiBCi0CN8t8ecpK62ih3fojycO6zrZCdd5Q-a4HhJZFxyFkRTA-5gpUa14TZ-tNtB5I2UN1hrElVOPjp5htKtUdQ9v',
-      role: 'manager',
-      department: 'Marketing',
-      lastActivity: '2 mins ago',
-      status: 'active',
-      isViolated: false
-    },
-    {
-      id: 'usr_sarah_miller',
-      name: 'Sarah Miller',
-      email: 's.miller@equinox.finance',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE1Hc9ux7JHMHHkGdj7IgxnhaEcnNjw1hMmPPqW2TaswtlaVrE4x2X1RzKk3Ryp7oN8oOTdiMCnFyJ9tjoPwZhIQ6KCxpZsblR3hhwQ_qT-RIxpqdd5z2gHTXONiBAJLQN23KYE751a06-tT4eCihUczZZxiqttzSGkviLyF_vb3D5sMwE-_T9zCX6JH9DkyfkVcMxeRBwpWWZTHJsqWfYZXrbeQjruVWOKeFoGLQVc_9ZBcC0opl0cplWPiSUwSqvxcpdbQ0QGcqZ',
-      role: 'finance',
-      department: 'Global Sales',
-      lastActivity: '14 mins ago',
-      status: 'active',
-      isViolated: false
-    },
-    {
-      id: 'usr_james_donovan',
-      name: 'James Donovan',
-      email: 'j.donovan@equinox.finance',
-      avatar: '',
-      role: 'auditor',
-      department: 'Compliance',
-      lastActivity: '6 hours ago',
-      status: 'violation',
-      isViolated: true
-    },
-    {
-      id: 'usr_elena_petrova',
-      name: 'Elena Petrova',
-      email: 'e.petrova@equinox.finance',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0lyVVYZI9FDdylDcz9R-0eRdzyNZnm_qo7AL-6gGfLSDt24ANQ5zCpRaGr-PiCeCC5zi2wA4Sd3_Dx92G_a2urTJu916Xk5hsoy4wfpcj2DMA-eE0nXuMVMdRgMPOqgYBOJQrMGuX2GFvL203QJoCQ6bs8l_tzGKtrBpe08KJPptLGPk6oJNKNph0kTzNMBomLb02jqXMaPbXKCQkVSmt3GM78fjC3ZMJ8dAlvhBHYTYSVhzOKCRCiAZkmjgeoMyxlxSBhZ-LBLIz',
-      role: 'employee',
-      department: 'Engineering',
-      lastActivity: 'Yesterday',
-      status: 'active',
-      isViolated: false
-    },
-    {
-      id: 'usr_marcus_chen',
-      name: 'Marcus Chen',
-      email: 'm.chen@equinox.finance',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB0Zxum239e-8pST6hzQ2vvF9WS-DE0rx-9rPWaU3Hbhylv25oeuUbrHfZLKLvsh8MyqRqEpDwUgNKt-PXwtuiUr4fevku40LNAM7QDJFGi8sFZSoKbsu1avd3RjSPlvLre5YvEWDBKlt2Fff75dhe9M2EpQ9P1BlT6qqu5q9YWK3C6Q4JJPR9B-tOY4cHgYwzPSOAoYH7VsMgQoxfsyZvt8eOVnR9VKw-PKfBM4Hew_9jzRkFae-TyZNLc3Ld8Tgj7vMBFDu9z0ozZ',
-      role: 'admin',
-      department: 'Operations',
-      lastActivity: 'Mar 12, 2024',
-      status: 'deactivated',
-      isViolated: false
-    }
-  ];
+  // Dynamic avatar mapping for high fidelity profile photos
+  const getAvatar = (email: string) => {
+    const avatars: Record<string, string> = {
+      'a.rivera@equinox.finance': 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQttV_6ni1CzIVT-pYvsHm9gE81oqp5ep8LGrwgWxdYJY8im8nbw5q6eapqUv1P7OX46gLaPeNauCwqbsqzxpP8206l8n-W0qm6aH5zkBM2Ia3Djixkwjrx3PbWm1nlxr4GT2HaNyBe4aaf1LRqzmYrjZN7919xIbj-Cz3eRKp5EOJ_6D3ZqMiBCi0CN8t8ecpK62ih3fojycO6zrZCdd5Q-a4HhJZFxyFkRTA-5gpUa14TZ-tNtB5I2UN1hrElVOPjp5htKtUdQ9v',
+      's.miller@equinox.finance': 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE1Hc9ux7JHMHHkGdj7IgxnhaEcnNjw1hMmPPqW2TaswtlaVrE4x2X1RzKk3Ryp7oN8oOTdiMCnFyJ9tjoPwZhIQ6KCxpZsblR3hhwQ_qT-RIxpqdd5z2gHTXONiBAJLQN23KYE751a06-tT4eCihUczZZxiqttzSGkviLyF_vb3D5sMwE-_T9zCX6JH9DkyfkVcMxeRBwpWWZTHJsqWfYZXrbeQjruVWOKeFoGLQVc_9ZBcC0opl0cplWPiSUwSqvxcpdbQ0QGcqZ',
+      'e.petrova@equinox.finance': 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0lyVVYZI9FDdylDcz9R-0eRdzyNZnm_qo7AL-6gGfLSDt24ANQ5zCpRaGr-PiCeCC5zi2wA4Sd3_Dx92G_a2urTJu916Xk5hsoy4wfpcj2DMA-eE0nXuMVMdRgMPOqgYBOJQrMGuX2GFvL203QJoCQ6bs8l_tzGKtrBpe08KJPptLGPk6oJNKNph0kTzNMBomLb02jqXMaPbXKCQkVSmt3GM78fjC3ZMJ8dAlvhBHYTYSVhzOKCRCiAZkmjgeoMyxlxSBhZ-LBLIz',
+      'm.chen@equinox.finance': 'https://lh3.googleusercontent.com/aida-public/AB6AXuB0Zxum239e-8pST6hzQ2vvF9WS-DE0rx-9rPWaU3Hbhylv25oeuUbrHfZLKLvsh8MyqRqEpDwUgNKt-PXwtuiUr4fevku40LNAM7QDJFGi8sFZSoKbsu1avd3RjSPlvLre5YvEWDBKlt2Fff75dhe9M2EpQ9P1BlT6qqu5q9YWK3C6Q4JJPR9B-tOY4cHgYwzPSOAoYH7VsMgQoxfsyZvt8eOVnR9VKw-PKfBM4Hew_9jzRkFae-TyZNLc3Ld8Tgj7vMBFDu9z0ozZ'
+    };
+    return avatars[email.toLowerCase()] || '';
+  };
 
-  // Merge lists for comprehensive coverage
-  const mergedUsers = [...apiUsersList.map((u: any) => ({
+  // Convert raw API users list to UI directory format preserving all fields
+  const mergedUsers = apiUsersList.map((u: any) => ({
     id: u.id || u._id,
     name: u.name,
     email: u.email,
-    avatar: '',
+    avatar: getAvatar(u.email),
     role: u.role,
     department: u.department,
-    lastActivity: 'Active',
-    status: u.isActive === false ? 'deactivated' : 'active',
-    isViolated: false
-  })), ...mockUsers];
+    costCenter: u.costCenter || '',
+    managerId: u.managerId || '',
+    isActive: u.isActive ?? true,
+    lastActivity: u.isActive === false ? 'Deactivated' : (u.isViolated ? '6 hours ago' : 'Active'),
+    status: u.isViolated ? 'violation' : (u.isActive === false ? 'deactivated' : 'active'),
+    isViolated: !!u.isViolated,
+  }));
 
   // Filtering
   const filteredUsers = mergedUsers.filter((user) => {
@@ -190,6 +137,18 @@ export default function UsersTab({ showToast }: UsersTabProps) {
     return true;
   });
 
+  // Reset page on search or filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter, deptFilter, statusFilter, sysRoleFilter]);
+
+  const totalUsersCount = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalUsersCount / rowsPerPage));
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalUsersCount);
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formFields.name || !formFields.email || !formFields.password) {
@@ -204,6 +163,8 @@ export default function UsersTab({ showToast }: UsersTabProps) {
         password: formFields.password,
         role: formFields.role,
         department: formFields.department,
+        costCenter: formFields.costCenter || undefined,
+        managerId: formFields.managerId || undefined,
       }).unwrap();
       
       if (result.status === 201) {
@@ -232,13 +193,87 @@ export default function UsersTab({ showToast }: UsersTabProps) {
         }, 1800);
       }
     } catch (err: any) {
-      // Fallback simulating creation for demo
-      setSuccessToast(true);
-      showToast('User provisioned (demo state fallback).');
-      setTimeout(() => {
-        setSuccessToast(false);
-        setIsCreating(false);
-      }, 1500);
+      const errorMsg = err?.data?.message || 'Failed to create user. Please try again.';
+      showToast(errorMsg, 'error');
+    }
+  };
+
+  const handleEditClick = (user: any) => {
+    setEditingUser(user);
+    setFormFields({
+      name: user.name || '',
+      email: user.email || '',
+      password: '',
+      employeeId: user.employeeId || '',
+      costCenter: user.costCenter || '',
+      managerId: user.managerId || '',
+      department: user.department || 'Finance',
+      role: user.role || 'employee',
+      mfaRequired: user.mfaRequired ?? true,
+      apiAccess: user.apiAccess ?? false,
+      isActive: user.isActive ?? true,
+    });
+    setIsEditing(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formFields.name || !formFields.email) {
+      showToast('Please fill out Name and Email.', 'error');
+      return;
+    }
+
+    if (!editingUser) return;
+
+    try {
+      const updates: any = {
+        name: formFields.name,
+        email: formFields.email,
+        role: formFields.role,
+        department: formFields.department,
+        costCenter: formFields.costCenter || undefined,
+        managerId: formFields.managerId || undefined,
+        isActive: formFields.isActive,
+      };
+
+      if (formFields.password) {
+        updates.password = formFields.password;
+      }
+
+      const result = await updateUser({
+        id: editingUser.id,
+        updates,
+      }).unwrap();
+
+      if (result.status === 200) {
+        setSuccessToast(true);
+        showToast('User profile updated successfully!');
+        
+        // Reset states
+        setFormFields({
+          name: '',
+          email: '',
+          password: '',
+          employeeId: '',
+          costCenter: '',
+          managerId: '',
+          department: 'Finance',
+          role: 'employee',
+          mfaRequired: true,
+          apiAccess: false,
+          isActive: true,
+        });
+
+        setTimeout(() => {
+          setSuccessToast(false);
+          setIsEditing(false);
+          setEditingUser(null);
+          refetch();
+        }, 1800);
+      }
+    } catch (err: any) {
+      const errorMsg = err?.data?.message || 'Failed to update user profile. Please try again.';
+      showToast(errorMsg, 'error');
     }
   };
 
@@ -283,18 +318,33 @@ export default function UsersTab({ showToast }: UsersTabProps) {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-10 bg-slate-800 rounded w-1/3 mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="h-24 bg-slate-800 rounded-xl" />
+          <div className="h-24 bg-slate-800 rounded-xl" />
+          <div className="h-24 bg-slate-800 rounded-xl" />
+          <div className="h-24 bg-slate-800 rounded-xl" />
+        </div>
+        <div className="h-64 bg-slate-800 rounded-xl mt-6" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
       {/* -------------------------------------------------- */}
       {/* DIRECTORY VIEW MODE */}
       {/* -------------------------------------------------- */}
-      {!isCreating ? (
+      {!isCreating && !isEditing ? (
         <>
           {/* Header controls */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-glass-border pb-4">
             <div>
               <h3 className="font-headline-lg text-2xl font-bold text-on-surface">Employee Directory</h3>
-              <p className="text-on-surface-variant text-sm mt-0.5">Manage access levels and corporate profiles for 1,248 active users.</p>
+              <p className="text-on-surface-variant text-sm mt-0.5">Manage access levels and corporate profiles for {usersData?.stats?.totalUsers ?? 0} active users.</p>
             </div>
             
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -395,7 +445,22 @@ export default function UsersTab({ showToast }: UsersTabProps) {
               </div>
               
               <button 
-                onClick={() => setIsCreating(true)}
+                onClick={() => {
+                  setFormFields({
+                    name: '',
+                    email: '',
+                    password: '',
+                    employeeId: '',
+                    costCenter: '',
+                    managerId: '',
+                    department: 'Finance',
+                    role: 'employee',
+                    mfaRequired: true,
+                    apiAccess: false,
+                    isActive: true,
+                  });
+                  setIsCreating(true);
+                }}
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-primary text-slate-900 text-xs font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20"
               >
                 <UserPlus size={14} />
@@ -409,28 +474,28 @@ export default function UsersTab({ showToast }: UsersTabProps) {
             <div className="glass-card p-6 rounded-xl flex flex-col gap-2 relative overflow-hidden border border-glass-border shadow-lg glow-electric">
               <span className="text-on-surface-variant text-[10px] font-mono uppercase tracking-wider">Total Users</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-on-surface">1,248</span>
+                <span className="text-3xl font-black text-on-surface">{usersData?.stats?.totalUsers ?? 0}</span>
                 <span className="text-emerald-success text-[10px] font-bold font-mono flex items-center gap-0.5">+2.4%</span>
               </div>
             </div>
             <div className="glass-card p-6 rounded-xl flex flex-col gap-2 border border-glass-border">
               <span className="text-on-surface-variant text-[10px] font-mono uppercase tracking-wider">Active Now</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-on-surface">842</span>
+                <span className="text-3xl font-black text-on-surface">{usersData?.stats?.activeNow ?? 0}</span>
                 <span className="text-on-surface-variant text-[10px] font-mono">Global HQ</span>
               </div>
             </div>
             <div className="glass-card p-6 rounded-xl flex flex-col gap-2 border border-glass-border">
               <span className="text-on-surface-variant text-[10px] font-mono uppercase tracking-wider">Pending Audit</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-amber-pending">12</span>
+                <span className="text-3xl font-black text-amber-pending">{usersData?.stats?.pendingAudit ?? 0}</span>
                 <span className="text-on-surface-variant text-[10px] font-mono">Requires Review</span>
               </div>
             </div>
             <div className="glass-card p-6 rounded-xl flex flex-col gap-2 border border-glass-border">
               <span className="text-on-surface-variant text-[10px] font-mono uppercase tracking-wider">Flagged Actions</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-ruby-violation">3</span>
+                <span className="text-3xl font-black text-ruby-violation">{usersData?.stats?.flaggedActions ?? 0}</span>
                 <span className="text-on-surface-variant text-[10px] font-mono">High Priority</span>
               </div>
             </div>
@@ -440,7 +505,7 @@ export default function UsersTab({ showToast }: UsersTabProps) {
           <div className="glass-card rounded-xl overflow-hidden flex flex-col border border-glass-border shadow-2xl">
             <div className="px-6 py-4 border-b border-glass-border flex justify-between items-center bg-white/5 text-xs">
               <div className="flex items-center gap-4">
-                <span className="font-mono text-on-surface-variant">Showing {filteredUsers.length} of 1,248 Users</span>
+                <span className="font-mono text-on-surface-variant">Showing {filteredUsers.length} of {usersData?.stats?.totalUsers ?? 0} Users</span>
                 <div className="h-4 w-[1px] bg-glass-border"></div>
                 <div className="flex gap-2">
                   <button 
@@ -485,7 +550,7 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-glass-border">
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-white/5 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -513,7 +578,7 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                               <ShieldAlert size={16} />
                             </button>
                           ) : null}
-                          <button onClick={() => showToast(`Editing profile for ${user.name}`)} className="p-2 hover:bg-white/10 rounded-lg text-primary transition-all">
+                          <button onClick={() => handleEditClick(user)} className="p-2 hover:bg-white/10 rounded-lg text-primary transition-all">
                             <Edit3 size={16} />
                           </button>
                           <button onClick={() => showToast(`Modifying credentials of ${user.name}`)} className="p-2 hover:bg-white/10 rounded-lg text-ruby-violation transition-all">
@@ -531,19 +596,36 @@ export default function UsersTab({ showToast }: UsersTabProps) {
             <div className="px-6 py-4 border-t border-glass-border flex justify-between items-center bg-white/5 text-xs text-on-surface-variant">
               <div className="flex items-center gap-2">
                 <span>Rows per page:</span>
-                <select className="bg-surface-container border border-glass-border rounded px-2 py-1 text-on-surface text-xs focus:outline-none">
-                  <option>10</option>
-                  <option>25</option>
-                  <option>50</option>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-surface-container border border-glass-border rounded px-2 py-1 text-on-surface text-xs focus:outline-none"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
                 </select>
               </div>
               <div className="flex items-center gap-4 font-mono">
-                <span>1-{filteredUsers.length} of 1,248</span>
+                <span>
+                  {totalUsersCount === 0 ? 0 : startIndex + 1}-{endIndex} of {totalUsersCount}
+                </span>
                 <div className="flex gap-1">
-                  <button className="w-8 h-8 flex items-center justify-center rounded bg-surface-container border border-glass-border hover:text-on-surface disabled:opacity-30" disabled>
-                    <X size={12} className="rotate-90" />
+                  <button
+                    disabled={activePage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-surface-container border border-glass-border hover:text-on-surface disabled:opacity-30 transition-all"
+                  >
+                    <ChevronRight size={14} className="rotate-180" />
                   </button>
-                  <button onClick={() => showToast('Pagination: Next Page')} className="w-8 h-8 flex items-center justify-center rounded bg-surface-container border border-glass-border hover:text-on-surface">
+                  <button
+                    disabled={activePage >= totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-surface-container border border-glass-border hover:text-on-surface disabled:opacity-30 transition-all"
+                  >
                     <ChevronRight size={14} />
                   </button>
                 </div>
@@ -587,18 +669,28 @@ export default function UsersTab({ showToast }: UsersTabProps) {
         </>
       ) : (
         /* -------------------------------------------------- */
-        /* CREATE NEW USER FORM MODE */
+        /* CREATE / EDIT USER FORM MODE */
         /* -------------------------------------------------- */
         <>
           {/* Header Controls */}
           <div className="flex justify-between items-center mb-xl border-b border-glass-border pb-4">
             <div>
-              <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Create New User</h2>
-              <p className="text-on-surface-variant text-sm mt-0.5">Configure employee profile and system access permissions.</p>
+              <h2 className="font-headline-lg text-2xl font-bold text-on-surface">
+                {isEditing ? 'Edit User Profile' : 'Create New User'}
+              </h2>
+              <p className="text-on-surface-variant text-sm mt-0.5">
+                {isEditing
+                  ? 'Modify employee profile and system access permissions.'
+                  : 'Configure employee profile and system access permissions.'}
+              </p>
             </div>
             
             <button
-              onClick={() => setIsCreating(false)}
+              onClick={() => {
+                setIsCreating(false);
+                setIsEditing(false);
+                setEditingUser(null);
+              }}
               className="flex items-center gap-1 px-4 py-2 bg-surface-container border border-glass-border hover:bg-slate-700 text-on-surface-variant hover:text-white rounded-lg text-xs font-semibold transition-all"
             >
               <Undo2 size={14} />
@@ -612,13 +704,18 @@ export default function UsersTab({ showToast }: UsersTabProps) {
               <div className="absolute -top-6 left-0 right-0 z-50 flex justify-center animate-bounce">
                 <div className="bg-emerald-success/20 border border-emerald-success text-emerald-success px-4 py-2.5 rounded-lg flex items-center gap-2 backdrop-blur-md shadow-lg font-bold text-xs">
                   <CheckCircle size={16} />
-                  <span>User Provisioned Successfully</span>
+                  <span>
+                    {isEditing ? 'User Profile Updated Successfully' : 'User Provisioned Successfully'}
+                  </span>
                 </div>
               </div>
             )}
 
             {/* Form Glass Panel Container */}
-            <form onSubmit={handleCreateSubmit} className="w-full max-w-4xl glass-card rounded-xl p-8 border border-glass-border relative shadow-2xl grid grid-cols-12 gap-6">
+            <form
+              onSubmit={isEditing ? handleEditSubmit : handleCreateSubmit}
+              className="w-full max-w-4xl glass-card rounded-xl p-8 border border-glass-border relative shadow-2xl grid grid-cols-12 gap-6"
+            >
               
               {/* Left Column: Personal info */}
               <div className="col-span-12 lg:col-span-6 space-y-4">
@@ -629,6 +726,7 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                   <input
                     type="text"
                     required
+                    autoComplete="off"
                     value={formFields.name}
                     onChange={(e) => setFormFields({ ...formFields, name: e.target.value })}
                     className="w-full bg-slate-800 border border-glass-border rounded-lg px-4 py-3 text-xs text-white placeholder:text-outline-variant focus:border-electric-blue transition-all outline-none"
@@ -645,16 +743,18 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                     <input
                       type="email"
                       required
+                      disabled={isEditing}
+                      autoComplete="off"
                       value={formFields.email}
                       onChange={(e) => setFormFields({ ...formFields, email: e.target.value })}
-                      className="w-full bg-slate-800 border border-glass-border rounded-lg pl-10 pr-4 py-3 text-xs text-white placeholder:text-outline-variant focus:border-electric-blue transition-all outline-none"
+                      className="w-full bg-slate-800 border border-glass-border disabled:opacity-55 rounded-lg pl-10 pr-4 py-3 text-xs text-white placeholder:text-outline-variant focus:border-electric-blue transition-all outline-none"
                       placeholder="employee@equinox.fin"
                     />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs uppercase font-mono tracking-wider text-on-surface-variant flex items-center gap-1">
-                    Password <span className="text-ruby-violation font-bold">*</span>
+                    Password {!isEditing && <span className="text-ruby-violation font-bold">*</span>}
                   </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-outline-variant">
@@ -662,11 +762,12 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                     </span>
                     <input
                       type="password"
-                      required
+                      required={!isEditing}
+                      autoComplete="new-password"
                       value={formFields.password}
                       onChange={(e) => setFormFields({ ...formFields, password: e.target.value })}
                       className="w-full bg-slate-800 border border-glass-border rounded-lg pl-10 pr-4 py-3 text-xs text-white placeholder:text-outline-variant focus:border-electric-blue transition-all outline-none"
-                      placeholder="••••••••"
+                      placeholder={isEditing ? "•••••••• (leave blank to keep current)" : "••••••••"}
                     />
                   </div>
                 </div>
@@ -676,6 +777,7 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                     <label className="text-xs uppercase font-mono tracking-wider text-on-surface-variant">Employee ID</label>
                     <input
                       type="text"
+                      autoComplete="off"
                       value={formFields.employeeId}
                       onChange={(e) => setFormFields({ ...formFields, employeeId: e.target.value })}
                       className="w-full bg-slate-800 border border-glass-border rounded-lg px-4 py-3 text-xs text-white font-mono focus:border-electric-blue transition-all outline-none"
@@ -702,9 +804,11 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                     className="w-full bg-slate-800 border border-glass-border rounded-lg px-4 py-3 text-xs text-white focus:border-electric-blue transition-all outline-none"
                   >
                     <option value="">Search &amp; Select Manager</option>
-                    <option value="mgr_sarah">Sarah Jenkins (CFO)</option>
-                    <option value="mgr_liam">Liam O'Sullivan (Dev Director)</option>
-                    <option value="mgr_nadia">Nadia Ahmed (HR Lead)</option>
+                    {managerUsers.map((mgr: any) => (
+                      <option key={mgr.id || mgr._id} value={mgr.id || mgr._id}>
+                        {mgr.name} ({mgr.role.toUpperCase()})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -743,6 +847,26 @@ export default function UsersTab({ showToast }: UsersTabProps) {
                   </div>
                 </div>
 
+                {isEditing && (
+                  <div className="flex items-center justify-between p-4 bg-slate-800 border border-glass-border rounded-xl">
+                    <div>
+                      <p className="text-xs font-bold text-white">Active Status</p>
+                      <p className="text-[10px] text-on-surface-variant">Allow user to authenticate and access dashboards</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormFields({ ...formFields, isActive: !formFields.isActive })}
+                      className={`w-9 h-5 rounded-full relative transition-all duration-200 border border-white/5 ${
+                        formFields.isActive ? 'bg-emerald-success shadow-sm shadow-emerald-success/20' : 'bg-slate-700'
+                      }`}
+                    >
+                      <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-[2px] transition-all duration-200 ${
+                        formFields.isActive ? 'right-[2px]' : 'left-[2px]'
+                      }`} />
+                    </button>
+                  </div>
+                )}
+
                 {/* Compliance banner */}
                 <div className="p-4 rounded-xl bg-amber-pending/10 border border-amber-pending/20 flex gap-2.5 text-xs text-on-surface-variant leading-snug">
                   <Info size={16} className="text-amber-pending shrink-0" />
@@ -756,18 +880,22 @@ export default function UsersTab({ showToast }: UsersTabProps) {
               <div className="col-span-12 flex justify-end gap-3 pt-6 border-t border-glass-border mt-4 text-xs font-semibold">
                 <button
                   type="button"
-                  onClick={() => setIsCreating(false)}
+                  onClick={() => {
+                    setIsCreating(false);
+                    setIsEditing(false);
+                    setEditingUser(null);
+                  }}
                   className="px-6 py-3 rounded-lg text-on-surface-variant hover:bg-white/5 transition-all text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isCreatingUser}
+                  disabled={isCreatingUser || isUpdatingUser}
                   className="px-6 py-3 rounded-lg bg-electric-blue text-slate-900 font-bold shadow-[0_0_15px_rgba(0,224,255,0.3)] hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5"
                 >
-                  {isCreatingUser && <Loader size={12} className="animate-spin" />}
-                  <span>Create User</span>
+                  {(isCreatingUser || isUpdatingUser) && <Loader size={12} className="animate-spin" />}
+                  <span>{isEditing ? 'Save Changes' : 'Create User'}</span>
                 </button>
               </div>
             </form>

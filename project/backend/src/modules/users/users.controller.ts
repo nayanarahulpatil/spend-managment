@@ -31,6 +31,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get all users' })
   async findAll() {
     const users = await this.usersService.findAll();
+    const stats = await this.usersService.getStats();
     return {
       status: 200,
       data: users.map(u => ({
@@ -40,8 +41,11 @@ export class UsersController {
         role: u.role,
         department: u.department,
         costCenter: u.costCenter,
+        managerId: u.managerId,
         isActive: u.isActive,
+        isViolated: u.isViolated,
       })),
+      stats,
       message: 'Users fetched',
     };
   }

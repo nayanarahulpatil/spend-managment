@@ -34,12 +34,59 @@ export class AiController {
 
   @Get('anomalies')
   @ApiOperation({ summary: 'Get list of detected anomalies/outliers' })
-  async getAnomalies(@Query('employee_id') employeeId?: string) {
-    const list = await this.aiService.getAnomalies(employeeId);
+  async getAnomalies(
+    @Query('employee_id') employeeId?: string,
+    @Query('department_id') departmentId?: string
+  ) {
+    const list = await this.aiService.getAnomalies(employeeId, departmentId);
     return {
       status: 200,
       data: { anomalies: list },
       message: 'Anomalies fetched',
+    };
+  }
+
+  @Get('forecast')
+  @ApiOperation({ summary: 'Get projected and actual spend figures' })
+  async getForecast() {
+    const forecast = await this.aiService.getForecast();
+    return {
+      status: 200,
+      data: forecast,
+      message: 'Spend projection generated',
+    };
+  }
+
+  @Get('config')
+  @ApiOperation({ summary: 'Get AI Engine configuration settings' })
+  async getConfig() {
+    const config = await this.aiService.getConfig();
+    return {
+      status: 200,
+      data: config,
+      message: 'AI configuration loaded',
+    };
+  }
+
+  @Post('config')
+  @ApiOperation({ summary: 'Update AI Engine configuration settings' })
+  async updateConfig(@Body() payload: any) {
+    const config = await this.aiService.updateConfig(payload);
+    return {
+      status: 200,
+      data: config,
+      message: 'AI configuration updated',
+    };
+  }
+
+  @Get('logs')
+  @ApiOperation({ summary: 'Get list of recent AI actions and automated tasks' })
+  async getLogs() {
+    const logs = await this.aiService.getSystemLogs();
+    return {
+      status: 200,
+      data: { logs },
+      message: 'Intelligence logs fetched',
     };
   }
 }

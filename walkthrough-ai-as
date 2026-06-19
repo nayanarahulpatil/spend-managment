@@ -1,0 +1,123 @@
+# Walkthrough - Dashboard (Module 5) & Reporting & Audit (Module 6) Features
+
+Completed the development of backend services and high-fidelity frontend layouts for **Module 5: Dashboard Module** and **Module 6: Reporting & Audit Module**.
+
+---
+
+## Module 5: Dashboard Module
+
+Developed a role-specific, dynamic, and secure dashboard experience for both employees and managers/admins/finance:
+
+### 1. Backend Service & Direct-Report Aggregations
+- **Direct-Reports Lookup**: Added `findByManagerId` to [users.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/users.service.ts) to resolve all accounts reporting to a manager.
+- **Reports Expenses Fetching**: Added `findByUserIds` to [expenses.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/expenses/expenses.service.ts) to retrieve aggregated data for direct reports.
+- **Dynamic Metrics Engine**: Refactored `getEmployeeMetrics` and `getManagerMetrics` in [dashboard.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/dashboard/dashboard.service.ts) to:
+  - Aggregate approved spends (`total_spent` / `team_spent`) and pending reimbursement claims in real-time.
+  - Track active policy violations.
+  - Fetch and populates user profile details (submitter name and department) on manager dashboard recent tables.
+- **Controller Binding**: Integrated the `@CurrentUser()` decorator on the manager statistics route in [dashboard.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/dashboard/dashboard.controller.ts) to safely retrieve context-aware data.
+
+### 2. High-Fidelity UI Redesign
+- **Interactive Metrics Cards**: Created the layout matching the Stitch UI design (Screen ID `5fcbccf509eb4ddfa625c91f3ffeecd8`) inside [DashboardTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/dashboard/DashboardTab.tsx) displaying:
+  - **Awaiting review count** with glowing warning/pending indicators.
+  - **Monthly approved totals** with trend badges.
+  - **Policy Violation counts** requiring immediate action.
+- **Bento Widget Section**: Included the AI Insights card (including a functional redirect link to the Policy/Reporting tab) and the Equinox Premium promo visual.
+- **Contextual Recent Submissions Table**:
+  - Employee view displays personal submissions.
+  - Manager/Admin view includes an additional **Employee Submitter** details column (populated with name and department) representing the team's live submissions.
+  - Customized status badges to represent `Approved`, `Pending`, `Policy Violation`, and `Rejected` statuses.
+- **Floating Action Button (FAB)**: Rendered a floating "New Expense" badge on the bottom-right for Employee roles to open the expense submission tab.
+
+---
+
+## Module 6: Reporting & Audit Module
+
+Developed a fully integrated, interactive Reporting & Audit dashboard (Screen ID `7514e431603942a5a46ce2d77719ee58`):
+
+### 1. Interactive Top Filter Panel
+- Integrated selectors for **Department**, **Expense Category**, and **Employee** (populated dynamically via the database using `useGetUsersQuery`).
+- Added a **Date Range** indicator that dynamically computes calendar ranges based on selected time frames (Last 30 Days, Quarterly, YTD).
+- Provided an **Apply Filters** action button which triggers RTK queries to refresh statistics in real-time.
+
+### 2. Backend Stats Aggregation & Dynamic Calculations
+- Created a `GET /api/v1/reports/stats` route in [reporting.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/reporting/reporting.controller.ts).
+- Implemented a reporting stats engine in [reporting.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/reporting/reporting.service.ts) to compute:
+  - Spend aggregated by department (Engineering, Marketing, Sales, Operations, HR, R&D) with max-spend indicators.
+  - Compliance rates (Compliant vs Total) and individual violation instances (missing receipts, duplicates, personal items).
+  - Expense Category pie charts breakdown.
+  - Financial budget metrics (Total budget, Variance, Forecast) scaling in response to active department filters.
+
+### 3. Dynamic Audit Trail & Compilation
+- Modified `getAuditLogs()` in [reporting.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/reporting/reporting.service.ts) to generate log histories dynamically from actual database submission, approval, and rejection events.
+- Bound the **On-Demand Report Compiler** allowing users to scope reports (Spend vs Violations) and compile them into download packages.
+
+---
+
+## Project-wide Font Size Correction
+
+Resolved the issue where text elements appeared too small and illegible across all pages and tabs (Dashboard, Approvals, Reporting, User Management) of the application.
+
+### 1. Scaling Standard Tailwind Typography Presets
+Modified [tailwind.config.js](file:///d:/vibe%20code/spend-managment/project/frontend/tailwind.config.js) under `theme.extend.fontSize` to scale up standard font-size utilities by ~1px to 2px:
+- `text-xs`: Scaled from `12px` (`0.75rem`) to `13px` (`0.8125rem`)
+- `text-sm`: Scaled from `14px` (`0.875rem`) to `15px` (`0.9375rem`)
+- `text-base`: Scaled from `16px` (`1rem`) to `17px` (`1.0625rem`)
+- `text-lg`: Scaled from `18px` (`1.125rem`) to `19px` (`1.1875rem`)
+- `text-xl`: Scaled from `20px` (`1.25rem`) to `22px` (`1.375rem`)
+- `text-2xl` / `text-3xl` / `text-4xl`: Scaled up proportionally to maintain hierarchy.
+
+### 2. Base HTML Font Scaling & Micro-Font Class Overrides
+Modified [index.css](file:///d:/vibe%20code/spend-managment/project/frontend/src/index.css) to apply global CSS corrections:
+- **Root Element Scaling**: Set `html { font-size: 109.375%; }` to scale up all `rem`-based font sizes and spacing metrics globally.
+- **Tailwind Arbitrary Overrides**: Targeted absolute pixel-based utility classes (such as `text-[8px]`, `text-[9px]`, `text-[10px]`, `text-[11px]`, and `text-[12px]`) with `!important` declarations to map them to comfortable, readable font sizes (e.g. `text-[10px]` maps to `14.5px` and `text-[12px]` maps to `16px`).
+
+---
+
+## Module 7: AI Assistant Module
+
+Developed the full-stack suite of features and high-fidelity layouts for the **AI Assistant Hub** matching Stitch Screen ID `d95c80a8e7bc4a0f869e38207cddf725`:
+
+### 1. Database-driven Backend Integrations
+- **AI Service Enhancements**: Modified [ai.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/ai/ai.service.ts) to:
+  - Implement `getAnomalies(employeeId?, departmentId?)` querying real Mongoose DB expenses to surface off-hours claims, amount outliers, and duplicate claims.
+  - Implement `getForecast()` aggregating approved database transactions into actual vs. projected spend metrics and calculating potential Q4 savings.
+  - Implement `getConfig()` / `updateConfig(payload)` to retrieve and dynamically save toggle states and sensitivity thresholds.
+  - Implement `getSystemLogs()` tracking automated categorization events, policy flags, and conversions.
+- **Session Continuity**: Leveraged [RedisService](file:///d:/vibe%20code/spend-managment/project/backend/src/database/redis.service.ts) in `ai.service.ts` to cache and restore chatbot conversation logs under `ai:session:${sessionId}` for contextual policy Q&A replies.
+- **Route Definitions**: Added the endpoints (`/anomalies`, `/forecast`, `/config`, and `/logs`) in [ai.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/ai/ai.controller.ts) bound with RBAC and JWT guards.
+
+### 2. Frontend Bindings & High-Fidelity UI Redesign
+- **Endpoint Registrations**: Added RTK Query hooks in [api.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/services/api.ts) for anomalies, forecasts, configurations, and logs.
+- **AI Assistant Chatbot Layout**: Redesigned [AiTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/ai/AiTab.tsx) displaying online status indicator, bot thinking bubble, and inline citation blocks for policy references.
+- **Interactive Widgets**:
+  - **Spend Forecast chart**: Renders an SVG chart of Jul–Dec spend, styling historical columns alongside projected columns with a glowing "Now" indicator line.
+  - **AI Engine Config panel**: Interactive toggle switches and sensitivity range slider that automatically submit updates to the backend in real-time.
+  - **Anomalies overview list**: Risk indicators (Risk: 94/100, 68/100, etc.) with custom hover glows.
+  - **System Intelligence Log table**: Table representing recent automated categorization, violation flags, and conversion tasks with corresponding confidence values.
+
+---
+
+## Verification Plan
+
+Because terminal execution is blocked by local OS policy on this machine, you can run the build compiler locally to verify:
+
+1. **Verify Backend**:
+   ```bash
+   cd project/backend
+   npm install
+   npm run start:dev
+   ```
+
+2. **Verify Frontend**:
+   ```bash
+   cd project/frontend
+   npm run build
+   npm run dev
+   ```
+   Open the application in your browser, click the **AI Assistant** tab in the sidebar, and confirm that:
+   - Chatbot answers policy questions (e.g., "What is the daily meal limit?") and renders citation cards.
+   - AI Config changes (toggles, sensitivity slider) persist on page refresh.
+   - Anomaly Overview, Spend Forecast charts, and System Logs load database-integrated records.
+
+

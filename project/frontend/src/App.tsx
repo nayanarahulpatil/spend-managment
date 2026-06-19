@@ -15,13 +15,14 @@ import ReportingTab from './features/reporting/ReportingTab';
 import UsersTab from './features/users/UsersTab';
 import AiTab from './features/ai/AiTab';
 import NotificationsTab from './features/notifications/NotificationsTab';
+import PolicyHubTab from './features/policy/PolicyHubTab';
 
 // Icons
 import { CheckCircle, XCircle } from 'lucide-react';
 
 export default function App() {
   const dispatch = useDispatch();
-  const { isAuthenticated, role } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, role, name } = useSelector((state: RootState) => state.auth);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -64,6 +65,8 @@ export default function App() {
         return 'AI Assistant Hub';
       case 'notifications':
         return 'Notifications';
+      case 'policy':
+        return 'Policy Hub';
       default:
         return 'Equinox Finance';
     }
@@ -90,6 +93,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         role={role || 'employee'}
+        name={name || ''}
         onLogout={handleLogout}
       />
 
@@ -99,6 +103,7 @@ export default function App() {
         <Header
           title={getPageTitle()}
           role={role || 'employee'}
+          name={name || ''}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onSearch={activeTab === 'workflow' ? (q) => console.log('Searching queue:', q) : undefined}
@@ -110,6 +115,7 @@ export default function App() {
           {activeTab === 'dashboard' && (
             <DashboardTab
               role={role || 'employee'}
+              name={name || ''}
               showToast={showToast}
               setActiveTab={setActiveTab}
             />
@@ -148,6 +154,12 @@ export default function App() {
 
           {activeTab === 'notifications' && (
             <NotificationsTab
+              showToast={showToast}
+            />
+          )}
+
+          {activeTab === 'policy' && (
+            <PolicyHubTab
               showToast={showToast}
             />
           )}

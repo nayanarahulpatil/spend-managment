@@ -1,0 +1,52 @@
+# Real Receipt OCR Value Extraction Plan
+
+Implement client-side OCR using the **Tesseract.js** library loaded dynamically from a CDN. This allows the application to extract actual text content from uploaded receipt image files (like PNG, JPG) to parse the vendor, amount, date, and tax ID, instead of relying solely on filename-based regex or static mock values.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Zero Dependency Installation**: Because local group policies restrict running terminal commands for dependency installation, we will load `Tesseract.js` dynamically from the jsDelivr CDN (`https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js`) at runtime.
+> - **OCR Fallback**: If the network is offline or the CDN fails to load, or if a non-image file (like PDF) is uploaded, the app will gracefully fall back to the existing filename-based regex parser (`extractOcrFromFile`).
+> - **OCR Parsing Strategy**:
+>   - **Amount**: Scan lines for total-related keywords (e.g., `Total`, `Amount`, `Sum`, `Due`) and extract the largest decimal number. If no keywords are found, default to the largest decimal number found below 10,000.
+>   - **Date**: Scan lines for standard date formats (`YYYY-MM-DD`, `DD-MM-YYYY`, `MM-DD-YYYY`, and spelled-out months like `Jan 15, 2026`).
+>   - **Vendor**: Search text for common known vendors (e.g., `Uber`, `Starbucks`, `McDonald's`, `Walmart`, `Delta Air`, etc.). If none match, extract the first non-trivial line from the receipt header, avoiding noise like "INVOICE" or "RECEIPT".
+>   - **Tax ID**: Scan lines for keywords like `Tax ID`, `EIN`, `VAT`, or `GST` followed by alphanumeric codes.
+
+## Open Questions
+
+> [!NOTE]
+> None. The requirement is straightforward: extract correct values from the uploaded PNG files.
+
+## Proposed Changes
+
+---
+
+### Frontend Components
+
+#### [MODIFY] [SubmitExpenseTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/expenses/SubmitExpenseTab.tsx)
+- Define a CDN script loader function `loadTesseractScript` that appends the `Tesseract.js` script tag to the DOM and resolves when `window.Tesseract` is available.
+- Implement `extractOcrFromText(text: string, filename: string): OcrExtracted`:
+  - Split text into lines.
+  - Implement heuristic parsing rules for Amount, Date, Vendor, and Tax ID.
+  - Combine text-based results with filename-based parsing (`extractOcrFromFile`) as fallbacks for any fields that could not be confidently identified in the text.
+- Modify `handleFileChange`:
+  - Check if the uploaded file is an image (`file.type.startsWith('image/')`).
+  - If it is an image, set loading status and show a scanning spinner.
+  - Load `Tesseract.js` dynamically, initialize a worker (`Tesseract.createWorker('eng')`), perform OCR recognition on the file, and terminate the worker.
+  - Pass the recognized text into `extractOcrFromText` to compute the values.
+  - If any error occurs or the file is not an image, fall back immediately to `extractOcrFromFile`.
+  - Populate the expense form fields and show a notification toast upon completion.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Prepare a test receipt image (PNG format) with text (e.g. "Starbucks Coffee", "Total: $14.50", "Date: 2026-06-15", "Tax ID: 12-3456789").
+2. Open the **New Expense Report** tab in the web app.
+3. Upload the test receipt PNG.
+4. Verify the scanning animation starts.
+5. Verify that the form fields (Amount, Date, Vendor, Tax ID, Description) are correctly populated with the actual text values from the image.
+6. Verify that the extraction confidence score rises to `98.2%`.
+7. Disconnect network/simulate script load block, and upload a file named `Uber_32.50_2026-06-12.png`. Verify that it falls back to parsing the filename correctly.

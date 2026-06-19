@@ -25,14 +25,15 @@ export class DashboardController {
   }
 
   @Get('manager')
-  @Roles('manager', 'finance', 'admin')
+  @Roles('manager', 'finance', 'admin', 'auditor')
   @ApiOperation({ summary: 'Retrieve manager dashboard stats' })
-  async getManagerDashboard() {
-    const stats = await this.dashboardService.getManagerMetrics();
+  async getManagerDashboard(@CurrentUser() user: any) {
+    const stats = await this.dashboardService.getManagerMetrics(user.userId, user.role);
     return {
       status: 200,
       data: stats,
       message: 'Manager stats fetched',
     };
   }
+
 }

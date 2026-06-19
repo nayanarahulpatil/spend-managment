@@ -1,0 +1,103 @@
+# Implementation Plan - Module 5 Dashboard Module
+
+Implement a high-fidelity, role-specific personal and team dashboard matching the Stitch design (Screen ID `5fcbccf509eb4ddfa625c91f3ffeecd8`). This dashboard will display spend summaries, active policy flags, and recent claims in real-time, enforcing security isolation and manager-level direct report aggregations.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Role-Based Views**:
+>   - **Employee**: Welcomes the user by name, displays personal metrics (Pending Reimbursement amount, Approved This Month, Active Policy Flags), AI Insights, and a list of their recent personal submissions.
+>   - **Manager / Admin / Finance**: Displays team/organizational metrics (Pending Approvals count, Team Approved Spend, Total Policy Violations) and a list of recent submissions across their direct reports or the entire company, including employee names.
+> - **Manager Direct Report Aggregations**: The manager dashboard will dynamically resolve the manager's direct reports and aggregate only their expenses, satisfying KPI `DASH-03`.
+> - **Security Isolation**: Enforces role checks on the controller level, preventing normal employees from querying manager/organization-wide dashboard statistics (KPI `DASH-06`).
+
+## Proposed Changes
+
+### Backend Components
+
+---
+
+#### [MODIFY] [users.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/users/users.service.ts)
+- Add a helper method `findByManagerId(managerId: string)` to query the database for all user profiles reporting to a given manager:
+  ```typescript
+  async findByManagerId(managerId: string): Promise<User[]> {
+    return this.userModel.find({ managerId }).exec();
+  }
+  ```
+
+#### [MODIFY] [expenses.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/expenses/expenses.service.ts)
+- Add a helper method `findByUserIds(userIds: string[])` to query the database for expenses submitted by a list of user IDs:
+  ```typescript
+  async findByUserIds(userIds: string[]): Promise<Expense[]> {
+    return this.expenseModel.find({ userId: { $in: userIds } }).exec();
+  }
+  ```
+
+#### [MODIFY] [dashboard.module.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/dashboard/dashboard.module.ts)
+- Import `UsersModule` to enable lookup of direct reports and user profile details:
+  ```typescript
+  imports: [ExpensesModule, UsersModule]
+  ```
+
+#### [MODIFY] [dashboard.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/dashboard/dashboard.service.ts)
+- Inject `UsersService` in constructor.
+- Update `getEmployeeMetrics(userId: string)` to calculate:
+  - `total_spent` (sum of `convertedAmount` of approved expenses).
+  - `total_pending` (sum of `convertedAmount` of pending_approval expenses).
+  - `pending_count` (number of pending approval expenses).
+  - `policy_flags` (number of active policy violations).
+  - `recent_submissions` (user's last 5-10 expenses, sorted by date descending).
+- Refactor `getManagerMetrics(managerId: string, role: string)`:
+  - If role is `admin`, `finance`, or `auditor`, fetch all expenses using `expensesService.findAll()`.
+  - If role is `manager`, retrieve direct reports using `usersService.findByManagerId(managerId)`, extract user IDs, and fetch their expenses using `expensesService.findByUserIds()`.
+  - Aggregate approved spend, pending counts, and policy violation flags.
+  - Return `recent_submissions` populated with submitter names (mapped from `UsersService`).
+
+#### [MODIFY] [dashboard.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/dashboard/dashboard.controller.ts)
+- Bind the `@CurrentUser() user: any` decorator to the `@Get('manager')` endpoint.
+- Pass the logged-in manager's `userId` and `role` to `dashboardService.getManagerMetrics()`.
+
+---
+
+### Frontend Components
+
+---
+
+#### [MODIFY] [DashboardTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/dashboard/DashboardTab.tsx)
+- Re-design layout to align perfectly with the Stitch high-fidelity dashboard design:
+  - **Dynamic Welcome Header**: Resolve profile greeting dynamically (e.g. from local storage user info or props).
+  - **Premium Metrics Row**:
+    - Left Card: Pending Reimbursement amount / Pending Approvals count.
+    - Center Card: Approved Spend (Personal / Team).
+    - Right Card: Active Policy Flags (Personal / Team).
+  - **Bento Columns**:
+    - AI Insights widget with context-aware recommendations and a route trigger to the Policy Hub / Reporting tab.
+    - Enterprise Savings Premium visual card asset.
+  - **Submissions Table**:
+    - Display columns: Submitter (visible for managers/admins), Date, Vendor/Description, Amount, Category, Status.
+    - Customize status pills matching the high-fidelity design:
+      - `Approved`: Green outline-pill with check icon.
+      - `Pending`: Amber outline-pill with clock icon.
+      - `Policy Violation` / `Rejected`: Red solid-pill with alert triangle icon.
+    - Action dropdown button triggers.
+  - **Floating Action Button (FAB)**: Render floating "New Expense" action button on the bottom-right for Employee roles to open the expense submission tab.
+
+---
+
+## Verification Plan
+
+### Automated Verification
+- Verify compilation of backend and frontend without warnings.
+
+### Manual Verification
+1. **Employee Dashboard**:
+   - Log in as `employee@company.com`.
+   - Verify the welcome greeting is "Good Morning, Alex" (or corresponding employee name).
+   - Confirm personal metrics (e.g. total pending reimbursement and approved spend) match the sum of active/approved claims.
+   - Click **New Expense** FAB on the bottom-right and verify it switches the tab to the Submit Expense view.
+2. **Manager / Admin Dashboard**:
+   - Log in as `manager@company.com` or `admin@company.com`.
+   - Verify metrics reflect direct reports' aggregated metrics or the organization-wide summary respectively.
+   - Verify the submissions table displays the correct submitter name for each expense record.
+3. **Role-Based Isolation**:
+   - Verify that an employee role cannot fetch manager analytics and returns a `403 Forbidden` error when trying to request the manager dashboard endpoints.

@@ -141,4 +141,9 @@ export class ExpensesService {
   async findAll(): Promise<Expense[]> {
     return this.expenseModel.find().exec();
   }
+
+  async findByUserIds(userIds: string[]): Promise<Expense[]> {
+    return this.expenseModel.find({ userId: { $in: userIds } }).exec();
+  }
 }
+

@@ -2,6 +2,7 @@ import { Injectable, ConflictException, NotFoundException, UnprocessableEntityEx
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
+import { Expense } from '../expenses/schemas/expense.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { RedisService } from '../../database/redis.service';
 import * as bcrypt from 'bcrypt';
@@ -20,6 +21,7 @@ const DEPARTMENT_COST_CENTER_MAP: Record<string, string[]> = {
 export class UsersService implements OnModuleInit {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Expense.name) private expenseModel: Model<Expense>,
     private readonly redisService: RedisService,
   ) {}
 
@@ -39,8 +41,7 @@ export class UsersService implements OnModuleInit {
       });
       await newAdmin.save();
       console.log('Seeded Admin user: admin@company.com / password123');
-    }
-  }
+    }  }
 
   private validateDepartmentCostCenter(department: string, costCenter: string) {
     const allowedCcs = DEPARTMENT_COST_CENTER_MAP[department];
@@ -69,7 +70,11 @@ export class UsersService implements OnModuleInit {
     }
 
     const department = createUserDto.department || 'Engineering';
-    const costCenter = createUserDto.costCenter || 'CC-101';
+    
+    // Resolve dynamic default cost center if not provided or empty
+    const allowedCcs = DEPARTMENT_COST_CENTER_MAP[department];
+    const defaultCc = allowedCcs && allowedCcs.length > 0 ? allowedCcs[0] : 'CC-101';
+    const costCenter = (createUserDto.costCenter && createUserDto.costCenter.trim()) || defaultCc;
     
     // USR-06: Department/Cost-Center Mapping validation
     this.validateDepartmentCostCenter(department, costCenter);
@@ -82,7 +87,8 @@ export class UsersService implements OnModuleInit {
       role: createUserDto.role.toLowerCase(),
       department,
       costCenter,
-      managerId: createUserDto.managerId || null,
+      isActive: true, // Explicitly default newly created users to active
+      managerId: (createUserDto.managerId && createUserDto.managerId.trim()) || null,
     });
     return createdUser.save();
   }
@@ -121,7 +127,40 @@ export class UsersService implements OnModuleInit {
     return updatedUser;
   }
 
-  async findAll(): Promise<User[]> {
-    return this.userModel.find().exec();
+  async getStats(): Promise<any> {
+    const totalUsers = await this.userModel.countDocuments().exec();
+    const activeNow = await this.userModel.countDocuments({ isActive: true }).exec();
+    const pendingAudit = await this.expenseModel.countDocuments({ status: 'pending_approval' }).exec();
+    const flaggedActions = await this.expenseModel.countDocuments({ policyViolation: true }).exec();
+    
+    return {
+      totalUsers,
+      activeNow,
+      pendingAudit,
+      flaggedActions,
+    };
+  }
+
+  async findAll(): Promise<any[]> {
+    const users = await this.userModel.find().exec();
+    const violatedUserIds = await this.expenseModel.distinct('userId', { policyViolation: true }).exec();
+    const violatedSet = new Set(violatedUserIds.map(id => id.toString()));
+
+    return users.map(u => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      department: u.department,
+      costCenter: u.costCenter,
+      isActive: u.isActive,
+      managerId: u.managerId,
+      isViolated: violatedSet.has(u._id.toString()),
+    }));
+  }
+
+  async findByManagerId(managerId: string): Promise<User[]> {
+    return this.userModel.find({ managerId }).exec();
   }
 }
+

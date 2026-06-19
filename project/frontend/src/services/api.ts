@@ -65,7 +65,7 @@ const baseQueryWithReauth: BaseQueryFn<
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Expenses', 'Workflow', 'Notifications', 'Users'],
+  tagTypes: ['Expenses', 'Workflow', 'Notifications', 'Users', 'AiConfig'],
   endpoints: (builder) => ({
     // Auth Module
     login: builder.mutation({
@@ -174,6 +174,14 @@ export const api = createApi({
       }),
       invalidatesTags: ['Users'],
     }),
+    updateUser: builder.mutation({
+      query: ({ id, updates }) => ({
+        url: `api/v1/users/${id}`,
+        method: 'PATCH',
+        body: updates,
+      }),
+      invalidatesTags: ['Users'],
+    }),
 
     // Notifications Module
     getNotifications: builder.query({
@@ -196,6 +204,17 @@ export const api = createApi({
         body: params,
       }),
     }),
+    getReportingStats: builder.query({
+      query: (params) => {
+        const queryParams = new URLSearchParams();
+        if (params?.department) queryParams.set('department', params.department);
+        if (params?.categoryId) queryParams.set('categoryId', params.categoryId);
+        if (params?.employeeId) queryParams.set('employeeId', params.employeeId);
+        if (params?.timePeriod) queryParams.set('timePeriod', params.timePeriod);
+        const queryString = queryParams.toString();
+        return `api/v1/reports/stats${queryString ? `?${queryString}` : ''}`;
+      },
+    }),
     getAuditLogs: builder.query({
       query: () => 'api/v1/audit/logs',
     }),
@@ -214,6 +233,33 @@ export const api = createApi({
         method: 'POST',
         body,
       }),
+    }),
+    getAiAnomalies: builder.query({
+      query: (params) => {
+        const queryParams = new URLSearchParams();
+        if (params?.employeeId) queryParams.set('employee_id', params.employeeId);
+        if (params?.departmentId) queryParams.set('department_id', params.departmentId);
+        const queryString = queryParams.toString();
+        return `api/v1/ai/anomalies${queryString ? `?${queryString}` : ''}`;
+      },
+    }),
+    getAiForecast: builder.query({
+      query: () => 'api/v1/ai/forecast',
+    }),
+    getAiConfig: builder.query({
+      query: () => 'api/v1/ai/config',
+      providesTags: ['AiConfig'],
+    }),
+    updateAiConfig: builder.mutation({
+      query: (body) => ({
+        url: 'api/v1/ai/config',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['AiConfig'],
+    }),
+    getAiLogs: builder.query({
+      query: () => 'api/v1/ai/logs',
     }),
 
     // Dashboards
@@ -244,12 +290,19 @@ export const {
   useApplyAiWorkflowRulesMutation,
   useGetUsersQuery,
   useCreateUserMutation,
+  useUpdateUserMutation,
   useGetNotificationsQuery,
   useMarkNotificationReadMutation,
   useGenerateReportMutation,
+  useGetReportingStatsQuery,
   useGetAuditLogsQuery,
   useAiChatMutation,
   useAiCategorizeMutation,
+  useGetAiAnomaliesQuery,
+  useGetAiForecastQuery,
+  useGetAiConfigQuery,
+  useUpdateAiConfigMutation,
+  useGetAiLogsQuery,
   useGetEmployeeDashboardQuery,
   useGetManagerDashboardQuery,
 } = api;

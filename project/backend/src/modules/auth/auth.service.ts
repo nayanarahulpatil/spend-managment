@@ -82,6 +82,13 @@ export class AuthService {
       access_token,
       refresh_token,
       role: user.role,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        department: user.department,
+        costCenter: user.costCenter,
+      },
     };
   }
 

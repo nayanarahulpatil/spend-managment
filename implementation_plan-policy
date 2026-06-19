@@ -1,0 +1,44 @@
+# Policy Hub Integration Plan
+
+This plan introduces a new **Policy Hub** tab in the enterprise spend management system to display category-specific limits, compliance rules, cost-center structures, and SLA workflows retrieved from the configuration rules in the `agents` folder.
+
+## User Review Required
+
+> [!NOTE]
+> The new page is positioned as a tab in the Sidebar immediately below **Notifications**.
+> It displays high-fidelity interactive sections:
+> - **Category Limits & Thresholds**: Expense limits per category (Meals, Travel, Client Relations, Office).
+> - **Receipt Compliance**: Rules regarding the $25 receipt requirement and duplicate validation.
+> - **Department Cost Centers**: Cost center mappings by department.
+> - **Workflow & Escalation SLAs**: Dynamic visual diagram of the 48-hour SLA escalation chain.
+
+## Proposed Changes
+
+---
+
+### Frontend Components
+
+#### [NEW] [PolicyHubTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/policy/PolicyHubTab.tsx)
+- Create an interactive tab featuring:
+  - Search filter to search policies.
+  - Interactive grid cards with custom icons and warning highlights for limits.
+  - Visual tables mapping departments to active cost centers.
+  - Informative callout alerts explaining duplicate receipt hashes and 48-hour escalation cycles.
+
+#### [MODIFY] [Sidebar.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/components/Sidebar.tsx)
+- Import the `BookOpen` icon from `lucide-react`.
+- Add a new "Policy Hub" navigation button directly below the "Notifications" tab.
+
+#### [MODIFY] [App.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/App.tsx)
+- Import the new `PolicyHubTab` component.
+- Add the `policy` route to `getPageTitle()` and render the component within the main content block.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Login to the application and confirm the "Policy Hub" tab appears in the Sidebar just below "Notifications".
+2. Click the "Policy Hub" tab and confirm the title updates to "Policy Hub".
+3. Verify that the search input filters policies correctly.
+4. Check that cost-centers and reimbursement threshold cards render correctly according to the project parameters.

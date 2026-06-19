@@ -1,0 +1,42 @@
+# Currency Conversion and Policy-Category Alignment Plan
+
+This plan outlines modifications to check policy limits in the **New Expense Report** using the USD-converted value of the expense amount based on the selected currency, and updates the category dropdown options to match the definitions in the **Policy Hub**.
+
+## User Review Required
+
+> [!NOTE]
+> - Exchange rates used for real-time validation:
+>   - `1 USD = 1.00 USD`
+>   - `1 EUR = 1.08 USD`
+>   - `1 GBP = 1.27 USD`
+>   - `1 INR = 0.012 USD`
+> - Receipt uploads will be required if the converted expense amount exceeds `$25.00 USD`.
+
+## Proposed Changes
+
+---
+
+### Frontend Components
+
+#### [MODIFY] [SubmitExpenseTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/expenses/SubmitExpenseTab.tsx)
+- Define a local FX rate mapper (`FX_RATES`) mapping supported currencies (`USD`, `EUR`, `GBP`, `INR`) to their USD conversion rate.
+- Update the policy evaluation `useEffect` to:
+  - Calculate `amountInUsd` using the selected currency rate.
+  - Evaluate daily meals ($50 daily, $15 sub-limit MKT-22), travel ($500), client relations ($150), and office supplies ($200) policies against `amountInUsd`.
+  - Add `formData.currency` to the dependency array.
+- Update the `handleSubmit` receipt validation to evaluate the `$25 USD` receipt requirement against `amountInUsd`.
+- Rename the select dropdown categories to match the Policy Hub:
+  - `Meals & Entertainment Cap (Limit $15/$50)`
+  - `Business Travel Allowance (Limit $500)`
+  - `Client Relations & Entertainment (Limit $150)`
+  - `Office Supplies & Hardware (Limit $200)`
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Open **New Expense Report**.
+2. Select **INR** and enter `3000` (which is $36.00 USD). Verify that the system prompts for a receipt (since it is > $25 USD).
+3. Select **Meals & Entertainment Cap** under **INR** and enter `1500` (which is $18.00 USD) with cost center **Marketing**. Verify that a policy violation is flagged because it exceeds the $15.00 USD meal cap ($18.00 > $15.00).
+4. Verify that changing currency between USD/EUR/GBP/INR updates the policy violation message in real time.

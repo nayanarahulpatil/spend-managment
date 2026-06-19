@@ -54,6 +54,9 @@ export class Expense extends Document {
 
   @Prop({ default: 0 })
   approvalLevel: number;
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const ExpenseSchema = SchemaFactory.createForClass(Expense);

@@ -4,6 +4,7 @@ import { Bell, Bot, Search } from 'lucide-react';
 interface HeaderProps {
   title: string;
   role: string;
+  name: string;
   onSearch?: (query: string) => void;
   searchPlaceholder?: string;
   activeTab: string;
@@ -13,6 +14,7 @@ interface HeaderProps {
 export default function Header({
   title,
   role,
+  name,
   onSearch,
   searchPlaceholder = 'Search...',
   activeTab,
@@ -26,6 +28,9 @@ export default function Header({
   };
 
   const getProfileImage = () => {
+    if (name) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&rounded=true`;
+    }
     if (role === 'manager' || role === 'finance' || role === 'admin') {
       return 'https://lh3.googleusercontent.com/aida-public/AB6AXuBliyKkF_R0yJhw0Uengjg4VFXUX_CrdrWaNmtjmaQKJlH9LSOHt1tZIDKh60JqSMiFcb5oKzj1-92-gB3756xyD2rgTeqFd7B4e9dsDXSazk_A0qSW6NFmst80rUSNVfwXXyq-RcXwSSMIdZIUijknTHPj9vgyhJ0jmgC7mjEOECmusq3u_Yhzypq3yp4zv-QO-GnEt6Y9ZGe9hWr7IEUHwlYfscq_RM7FVDF-pnq_RGN7npY82RrIrLLtILk33lR-pPT26vy1Z1MF';
     }
@@ -33,6 +38,7 @@ export default function Header({
   };
 
   const getProfileName = () => {
+    if (name) return name;
     if (role === 'manager' || role === 'finance' || role === 'admin') {
       return 'Julian Vane';
     }
@@ -40,7 +46,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-surface/80 backdrop-blur-xl border-b border-glass-border h-16 shadow-sm flex items-center justify-between px-gutter max-w-container-max mx-auto w-full">
+    <header className="sticky top-0 z-30 bg-surface/80 backdrop-blur-xl border-b border-glass-border h-16 shadow-sm flex items-center justify-between px-6 max-w-container-max mx-auto w-full">
       <div className="flex items-center gap-8">
         <h2 className="font-headline-md text-headline-md font-bold text-electric-blue">{title}</h2>
         

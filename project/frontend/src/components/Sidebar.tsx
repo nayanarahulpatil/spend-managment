@@ -10,17 +10,19 @@ import {
   Settings,
   HelpCircle,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  BookOpen
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   role: string;
+  name: string;
   onLogout: () => void;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, role, onLogout }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, role, name, onLogout }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 h-full flex flex-col py-6 z-40 bg-slate-800/90 dark:bg-slate-800/90 backdrop-blur-2xl border-r border-glass-border w-64 shadow-2xl shrink-0">
       {/* Brand Logo Header */}
@@ -134,6 +136,19 @@ export default function Sidebar({ activeTab, setActiveTab, role, onLogout }: Sid
           <Bell size={18} />
           <span className="font-label-md text-sm">Notifications</span>
         </button>
+
+        {/* Policy Hub */}
+        <button
+          onClick={() => setActiveTab('policy')}
+          className={`w-full rounded-lg mx-2 my-1 px-4 py-3 flex items-center gap-3 transition-all duration-200 ${
+            activeTab === 'policy'
+              ? 'bg-secondary-container text-on-secondary-container font-bold translate-x-1 shadow-lg shadow-secondary-container/10'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'
+          }`}
+        >
+          <BookOpen size={18} />
+          <span className="font-label-md text-sm">Policy Hub</span>
+        </button>
       </nav>
 
       {/* Footer Details & Logout */}
@@ -144,11 +159,11 @@ export default function Sidebar({ activeTab, setActiveTab, role, onLogout }: Sid
             <img
               alt="User"
               className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLc-UDPkyP1zq2TYxauePM2kLAR1toZe849bqmlqlfgPR7ZVs_-uhHWc89McmrvEQNhfUyKB1XDSdOkEjU1xnDV_jv25j6Jx4kVJ82ZexKPdbSRrrWqjGRBesh1baY1G7QgRuEvoiUV_GNFCWgIJ38LqhzjLNZGBjP4O9E5e9LVgDAvkF_2iBu62vHoYVK6BUgiyU4eIi1gzgz8Tr8z-iG9d6rWt-dToXPTr7its19RXZOWkK2vDpisPR-mxPX7KjfOSgRoLLd9xa1"
+              src={name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&rounded=true` : "https://lh3.googleusercontent.com/aida-public/AB6AXuCLc-UDPkyP1zq2TYxauePM2kLAR1toZe849bqmlqlfgPR7ZVs_-uhHWc89McmrvEQNhfUyKB1XDSdOkEjU1xnDV_jv25j6Jx4kVJ82ZexKPdbSRrrWqjGRBesh1baY1G7QgRuEvoiUV_GNFCWgIJ38LqhzjLNZGBjP4O9E5e9LVgDAvkF_2iBu62vHoYVK6BUgiyU4eIi1gzgz8Tr8z-iG9d6rWt-dToXPTr7its19RXZOWkK2vDpisPR-mxPX7KjfOSgRoLLd9xa1"}
             />
           </div>
           <div className="overflow-hidden">
-            <p className="text-xs font-semibold text-on-surface truncate">Alex Rivera</p>
+            <p className="text-xs font-semibold text-on-surface truncate">{name || "Alex Rivera"}</p>
             <p className="text-[10px] text-on-surface-variant uppercase tracking-wider truncate">{role}</p>
           </div>
         </div>

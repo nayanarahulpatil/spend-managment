@@ -83,9 +83,13 @@ export class WorkflowService implements OnModuleInit {
     const updatedLevels = rule.levels.map((lvl) => {
       if (lvl.level === 1) {
         return {
-          ...lvl.toObject(),
+          level: lvl.level,
+          name: lvl.name,
           limit: 200,
           description: 'Approves requests up to $200',
+          slaHours: lvl.slaHours,
+          autoEscalate: lvl.autoEscalate,
+          condition: lvl.condition,
         };
       }
       return lvl;

@@ -103,3 +103,34 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Global Root Font Sizing & Typography Overrides */
+html {
+  font-size: 109.375%; /* Scales standard rem-based text and spacing globally */
+}
+
+/* Explicitly scale up Tailwind's arbitrary micro-font classes used throughout the app */
+.text-\[8px\] {
+  font-size: 11.5px !important;
+  line-height: 14.5px !important;
+}
+
+.text-\[9px\] {
+  font-size: 13px !important;
+  line-height: 16px !important;
+}
+
+.text-\[10px\] {
+  font-size: 14.5px !important;
+  line-height: 17.5px !important;
+}
+
+.text-\[11px\] {
+  font-size: 15.2px !important;
+  line-height: 18.5px !important;
+}
+
+.text-\[12px\] {
+  font-size: 16px !important;
+  line-height: 19.5px !important;
+}

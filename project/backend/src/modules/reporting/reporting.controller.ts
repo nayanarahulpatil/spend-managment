@@ -35,8 +35,30 @@ export class ReportingController {
     };
   }
 
+  @Get('api/v1/reports/stats')
+  @Roles('finance', 'admin', 'auditor', 'manager')
+  @ApiOperation({ summary: 'Retrieve reporting dashboard stats' })
+  async getStats(
+    @Query('department') department?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('employeeId') employeeId?: string,
+    @Query('timePeriod') timePeriod?: string,
+  ) {
+    const stats = await this.reportingService.getStats({
+      department,
+      categoryId,
+      employeeId,
+      timePeriod,
+    });
+    return {
+      status: 200,
+      data: stats,
+      message: 'Reporting stats compiled',
+    };
+  }
+
   @Get('api/v1/audit/logs')
-  @Roles('auditor', 'admin')
+  @Roles('auditor', 'admin', 'finance')
   @ApiOperation({ summary: 'Retrieve immutable system audit logs' })
   async getAuditLogs() {
     const logs = await this.reportingService.getAuditLogs();
@@ -50,3 +72,4 @@ export class ReportingController {
     };
   }
 }
+

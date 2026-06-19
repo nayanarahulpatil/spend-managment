@@ -1,0 +1,74 @@
+# Implementation Plan - Module 7: AI Assistant Module
+
+Implement a high-fidelity, interactive **AI Assistant Hub** matching Stitch Screen ID `d95c80a8e7bc4a0f869e38207cddf725`. This module features real-time anomaly detection views, a policy chatbot with citation support, spend forecasting widgets, interactive configuration toggles, and an intelligence action log.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **AI Engine Config Toggles**: We will persist configuration states (Policy Assistant, Smart OCR, Real-time Anomaly, and Sensitivity Slider) in memory / Redis. Toggling them in the UI will trigger real-time updates to the backend.
+> - **Spend Forecast Chart**: Visualizes actual monthly spends (aggregated from the DB) alongside forecast projections for future months with a styled SVG/bar layout.
+> - **Rich Chat Citations**: The chatbot interface will render formatted policy citation boxes if a citation reference is returned in the API response.
+
+## Proposed Changes
+
+### Backend Components
+
+---
+
+#### [MODIFY] [ai.module.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/ai/ai.module.ts)
+- Import `MongooseModule.forFeature([{ name: Expense.name, schema: ExpenseSchema }])` to enable querying actual expenses for anomaly detection and forecasting.
+- Import `UsersModule` for manager/department resolution.
+
+#### [MODIFY] [ai.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/ai/ai.service.ts)
+- Inject `Model<Expense>` and `UsersService`.
+- Implement `getAnomalies(employeeId?, departmentId?)`:
+  - Query database expenses with `policyViolation: true` or suspicious flags.
+  - Return formatted list of anomaly items (Duplicate Vendor, Off-Hours Activity, Amount Outlier) with risk scores.
+- Implement `getForecast()`:
+  - Aggregate approved expenses by month.
+  - Compute a predicted Q4 spend value and potential savings.
+  - Project values for remaining months in the calendar year.
+- Implement `getConfig()` / `updateConfig(payload)`:
+  - Retrieve and save config states (policyAssistant, smartOcr, realTimeAnomaly, sensitivity) in-memory or Redis.
+- Implement `getSystemLogs()`:
+  - Query recent logs of automated actions (such as categorization suggestions, duplicate flag warnings, and converted amounts).
+
+#### [MODIFY] [ai.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/ai/ai.controller.ts)
+- Add endpoints:
+  - `GET /api/v1/ai/anomalies`: Fetch detected anomalies list.
+  - `GET /api/v1/ai/forecast`: Fetch forecast and spend projection.
+  - `GET /api/v1/ai/config`: Fetch AI Engine settings.
+  - `POST /api/v1/ai/config`: Update AI Engine settings.
+  - `GET /api/v1/ai/logs`: Fetch recent intelligence system actions log.
+
+---
+
+### Frontend Components
+
+---
+
+#### [MODIFY] [api.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/services/api.ts)
+- Add RTK Query endpoints:
+  - `getAiAnomaliesQuery` / `getAiForecastQuery` / `getAiConfigQuery`
+  - `updateAiConfigMutation` / `getAiLogsQuery`
+
+#### [MODIFY] [AiTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/ai/AiTab.tsx)
+- Redesign UI to match the Stitch screen:
+  - **Header Area**: Render title "AI Intelligence Hub", Version Tag, "Export Report" and "Re-scan Ledger" buttons.
+  - **AI Chatbot (Left Panel)**: Render clean message bubbles, Online status pulse, Bot typing/thinking indicators, Citation citation boxes, and Chat send handler.
+  - **Anomaly Overview**: Render list of duplicate vendor claims, off-hours submissions, and high outliers with risk badges.
+  - **Spend Forecast Chart**: Render a dynamic SVG/CSS bar chart displaying actual vs. predicted spends with a "Now" indicator line.
+  - **AI Engine Config**: Render functional switches for Policy Assistant, Smart OCR, and Real-time Anomaly, and Sensitivity Slider. Toggling options instantly syncs settings with the backend.
+  - **Intelligence Log Table**: Render dynamic rows showing recent automated actions, confidence percentages, and status tags (`AUTO`, `FLAGGED`, `TASK`, `MERGED`).
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Verify TypeScript compilation and building completes without errors.
+
+### Manual Verification
+1. **Chat Interaction**: Ask policy questions in the chatbot panel and verify answers are displayed along with citations if applicable.
+2. **AI Config Sync**: Toggle Policy Assistant or slide the Sensitivity bar, reload the page, and check if settings persist.
+3. **Anomalies & Projections**: Check if anomaly alerts and forecast bars display proportional statistics.

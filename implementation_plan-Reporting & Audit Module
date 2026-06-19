@@ -1,0 +1,75 @@
+# Implementation Plan - Module 6: Reporting & Audit Module
+
+Implement a fully interactive, production-ready Reporting & Audit Dashboard matching the Stitch design (Screen ID `7514e431603942a5a46ce2d77719ee58`). This dashboard features dynamic filtering, live database-driven analytics aggregation, an immutable audit trail feed, and on-demand report compiling.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Interactive Filters Panel**: Add a top filter panel in `ReportingTab.tsx` with selectors for Department, Expense Category, Employee, and Date Range. Clicking "Apply Filters" will reload stats dynamically.
+> - **Backend Stats Aggregator**: Introduce a new `GET /api/v1/reports/stats` API endpoint that computes department-wise spend, compliance percentages, variance calculations, and category breakdowns.
+> - **Dynamic Audit Logs**: Upgrade the backend `getAuditLogs()` to query the expenses database, generating a timeline of submissions, approvals, and rejections.
+
+## Proposed Changes
+
+### Backend Components
+
+---
+
+#### [MODIFY] [reporting.module.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/reporting/reporting.module.ts)
+- Import `UsersModule` to allow resolving department memberships and user names.
+
+#### [MODIFY] [reporting.service.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/reporting/reporting.service.ts)
+- Inject `UsersService` in constructor.
+- Implement `getStats(filters: any)`:
+  - Fetch all expenses and users.
+  - Filter expenses by `filters.department`, `filters.categoryId`, `filters.employeeId`, and date thresholds (Time Period).
+  - Aggregate spend by department: `{ Engineering, Marketing, Sales, Operations, HR, R&D }`.
+  - Aggregate spend by category: `{ 'Travel & Subsistence', 'Software SaaS', 'Office Equipment' }`.
+  - Calculate policy compliance rate: `(Compliant Expenses / Total Expenses) * 100`.
+  - Compute total budget, variance, and forecast metrics.
+- Refactor `getAuditLogs()`:
+  - Query all expenses, sorting by `updatedAt` descending.
+  - Generate audit log objects for submission, approval, and rejection events with formatted timestamps, actors, messages, and references (e.g. `EXP-XXXX`).
+
+#### [MODIFY] [reporting.controller.ts](file:///d:/vibe%20code/spend-managment/project/backend/src/modules/reporting/reporting.controller.ts)
+- Add the `GET /api/v1/reports/stats` route (Roles: finance, admin, auditor, manager).
+- Extract query parameters: `department`, `categoryId`, `employeeId`, `timePeriod`, and pass them to `reportingService.getStats()`.
+
+---
+
+### Frontend Components
+
+---
+
+#### [MODIFY] [api.ts](file:///d:/vibe%20code/spend-managment/project/frontend/src/services/api.ts)
+- Add RTK Query endpoint `getReportingStats` taking filters as parameters.
+- Export corresponding `useGetReportingStatsQuery` hook.
+
+#### [MODIFY] [ReportingTab.tsx](file:///d:/vibe%20code/spend-managment/project/frontend/src/features/reporting/ReportingTab.tsx)
+- Redesign layout to match the Stitch design:
+  - **Filter Control Panel**: Render Department, Expense Category, Employee (fetched dynamically using `useGetUsersQuery`), and Date Range selectors.
+  - **Interactive Charts**:
+    - Render the **Spend by Department** bar charts dynamically with glowing accents for the highest spending department.
+    - Render the **Policy Compliance** circle meter with compliance rates, trend indicators, and top violation category instances.
+    - Render the **Expense Categories** circle breakdown.
+  - **Live Audit Trail Table**: Bind data from the dynamic audit logs query, displaying timestamps, events, status badges, and reference tags.
+  - **On-Demand Report Compiler**: Link to the PDF/CSV compilation endpoint.
+  - **Quick Action Cards**: PDF/CSV exports, Audit ZIP generator, and AI insights dashboard triggers.
+
+---
+
+## Verification Plan
+
+### Automated Verification
+- Verify build compiler completes without warnings or errors.
+
+### Manual Verification
+1. **Apply Filters**:
+   - Select "Sales" department and click "Apply Filters".
+   - Confirm that "Spend by Department" and "Expense Categories" adapt to display only Sales department statistics.
+2. **Dynamic Audit Log Feed**:
+   - Submit a new expense.
+   - Access the Reporting & Audit tab and verify that a new "Expense submitted" log entry appears instantly at the top of the table.
+3. **On-Demand PDF Compiler**:
+   - Select "violations" scope and click "Compile File".
+   - Verify that download URL is successfully generated and accessible.
